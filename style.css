@@ -451,7 +451,7 @@ code { font-family: var(--m); font-size: 12.5px; background: var(--surface2); pa
 /* KPI Grid */
 .saas-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 1.25rem;
 }
 .saas-kpi-card {
