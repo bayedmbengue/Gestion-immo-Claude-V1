@@ -1,8 +1,5 @@
 const SK='immogestion_v5'; // stable key
-// ── OBFUSCATION (ceci n'est pas un chiffrement sécurisé, juste une obfuscation contre la lecture accidentelle. Une vraie sécurité nécessite un backend) ──
-const CIPHER_KEY = 'ImmoG3st10n#S3cur3!';
-
-// ── UTILITAIRES DE SECURITE ──
+// ── OBFUSCATION (Supprimé car l'authentification est gérée par Supabase) ──// ── UTILITAIRES DE SECURITE ──
 function escapeHtml(str) {
   if (str === null || str === undefined) return '';
   return String(str)
@@ -18,9 +15,7 @@ let _rapCurrentType = '';
 let _rapAmortData   = null;
 let _rapSortCol     = '';
 let _rapSortAsc     = true;
-function xorEncrypt(str,key){let r='';for(let i=0;i<str.length;i++)r+=String.fromCharCode(str.charCodeAt(i)^key.charCodeAt(i%key.length));return btoa(unescape(encodeURIComponent(r)));}
-function xorDecrypt(enc,key){try{const str=decodeURIComponent(escape(atob(enc)));let r='';for(let i=0;i<str.length;i++)r+=String.fromCharCode(str.charCodeAt(i)^key.charCodeAt(i%key.length));return r;}catch(e){return null;}}
-
+// xorEncrypt et xorDecrypt ont été supprimés (obsolètes avec le backend)
 
 // Migrate from older keys
 (function migrateOldData(){
@@ -49,12 +44,7 @@ let DB={
     {id:'INCORP',libelle:'Immobilisations incorporelles',duree:3,methode:'lin',cptImmo:'2111',cptAmort:'2801',cptDot:'6811'},
     {id:'AUTRE',libelle:'Autres matériels',duree:5,methode:'lin',cptImmo:'2498',cptAmort:'2898',cptDot:'6813'},
   ],
-  utilisateurs:[
-    // Mots de passe par défaut générés avec SHA-256 (voir documentation)
-    {id:1,nom:'Amadou Diallo',email:'a.diallo@org.sn',role:'admin',statut:'actif',connexion:'23/04/2024',pwdHash:'240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a9'},
-    {id:2,nom:'Fatou Mbaye',email:'f.mbaye@org.sn',role:'comptable',statut:'actif',connexion:'22/04/2024',pwdHash:'f5f3082a44e3b08a3a8d9464ce5ec1b752fe619f9ab179bdbdca8a3d34971ffe'},
-    {id:3,nom:'Omar Seck',email:'o.seck@org.sn',role:'gestionnaire',statut:'actif',connexion:'20/04/2024',pwdHash:'2dace04e422ee55c3b62928a6f41ce67e8840665b11742c35266b7e5402d0000'},
-  ],
+  utilisateurs:[], // Les utilisateurs sont maintenant gérés par Supabase Auth
   params:{methode:'lin',cal:360,coef1:1.5,coef2:2.0,coef3:2.5,pfx:'IMM',pfx2:'IMM',sep:'.',sep2:'-',yr:'ddmmyy',len:4,lennum:3,incyr:1,nxt:1,codifModel:'sequential',entite:{rs:'',adresse:'',tel:'',email:'',ninea:'',logo:'',ex:''}}
 };
 
@@ -233,77 +223,54 @@ function generateSalt() { return Math.random().toString(36).substring(2, 15) + M
 
 async function doLogin(){
   try{
-  const email=(document.getElementById('login-email').value||'').trim().toLowerCase();
-  const pwd=document.getElementById('login-pwd').value.trim();
-  if(!email||!pwd){
-    const err=document.getElementById('login-err');err.textContent='Email et mot de passe requis';err.style.display='block';return;
-  }
-  const matchingUsers=DB.utilisateurs.filter(u=>{
-    if(!u.email||u.email.toLowerCase()!==email)return false;
-    if(u.statut==='inactif')return false;
-    return true;
-  });
-  
-  let valid = false;
-  let user = null;
-  
-  for(const u of matchingUsers) {
-    if (u.salt && u.pwdHash) {
-      const checkHash = await sha256(u.salt + pwd);
-      if(checkHash === u.pwdHash) { valid = true; user = u; break; }
-    } else if (u.pwdHash) {
-      const checkHash = await sha256(pwd);
-      if(checkHash === u.pwdHash) {
-        valid = true; user = u;
-        user.salt = generateSalt();
-        user.pwdHash = await sha256(user.salt + pwd);
-        dbSave();
-        break;
-      }
-    } else if (u.pwd) {
-      if(u.pwd === pwd) {
-        valid = true; user = u;
-        user.salt = generateSalt();
-        user.pwdHash = await sha256(user.salt + pwd);
-        delete user.pwd;
-        dbSave();
-        break;
-      }
+    const email=(document.getElementById('login-email').value||'').trim().toLowerCase();
+    const pwd=document.getElementById('login-pwd').value.trim();
+    if(!email||!pwd){
+      const err=document.getElementById('login-err');err.textContent='Email et mot de passe requis';err.style.display='block';return;
     }
-  }
-
-  // FORCE LOGIN FOR USER WHO IS STUCK
-  if (!valid && email === 'bayedmbengue@gmail.com' && pwd === 'Passer@1') {
-    user = DB.utilisateurs.find(u => u.email && u.email.toLowerCase() === email) || DB.utilisateurs[0];
-    if (user) {
-      valid = true;
-      user.salt = generateSalt();
-      user.pwdHash = await sha256(user.salt + pwd);
-      dbSave();
+    
+    // Auth with Supabase
+    const { data, error } = await supabaseClient.auth.signInWithPassword({
+      email: email,
+      password: pwd
+    });
+    
+    if (error || !data.session) {
+      const err=document.getElementById('login-err');err.textContent='Email ou mot de passe incorrect';err.style.display='block';
+      return;
     }
-  }
-
-  if(!valid || !user){
-    const err=document.getElementById('login-err');err.textContent='Email ou mot de passe incorrect';err.style.display='block';
-    document.getElementById('login-info').style.display='block';
-    return;
-  }
-  
-  currentUser=user;
-  document.getElementById('login-page').style.display='none';
-  document.getElementById('app').style.display='flex';
-  document.getElementById('unom').textContent=currentUser.nom;
-  const currRoleObj = (DB.roles||[]).find(r=>r.id===currentUser.role);
-  document.getElementById('urole').textContent=currRoleObj ? currRoleObj.libelle : currentUser.role;
-  document.getElementById('uav').textContent=currentUser.nom.split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2);
-  currentUser.connexion=new Date().toLocaleDateString('fr-FR');
-  const uDB=DB.utilisateurs.find(x=>x.id===currentUser.id);
-  if(uDB) uDB.connexion=currentUser.connexion;
-  dbSave();
-  applyRoleUI();
-  rdDash();
-  logAction('LOGIN','Session','Connexion de '+currentUser.nom);
-  }catch(err){
+    
+    // Fetch user profile from Supabase
+    const { data: profile, error: profErr } = await supabaseClient
+      .from('utilisateurs')
+      .select('*')
+      .eq('id', data.user.id)
+      .single();
+      
+    if (profErr || !profile) {
+       const err=document.getElementById('login-err');err.textContent='Profil utilisateur non configuré dans la table utilisateurs.';err.style.display='block';
+       return;
+    }
+    
+    currentUser = {
+      id: profile.id,
+      nom: profile.nom,
+      email: profile.email,
+      role: profile.role,
+      statut: profile.statut
+    };
+    
+    document.getElementById('login-page').style.display='none';
+    document.getElementById('app').style.display='flex';
+    document.getElementById('unom').textContent=currentUser.nom;
+    const currRoleObj = (DB.roles||[]).find(r=>r.id===currentUser.role);
+    document.getElementById('urole').textContent=currRoleObj ? currRoleObj.libelle : currentUser.role;
+    document.getElementById('uav').textContent=currentUser.nom.split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2);
+    
+    applyRoleUI();
+    rdDash();
+    console.log('Connecté via Supabase !');
+  } catch(err) {
     console.error('Login error:',err);
     const e2=document.getElementById('login-err');
     if(e2){e2.textContent='Erreur technique: '+err.message;e2.style.display='block';}
@@ -2397,8 +2364,11 @@ function delImmo(id){
 }
 function saveImmo(){
   if(!guardWrite())return;
+  
+  const sanitize = (str) => str ? String(str).replace(/</g, '«').replace(/>/g, '»') : str;
+  
   const eid=document.getElementById('f-eid').value;
-  const des=document.getElementById('fc1').value.trim();
+  const des=sanitize(document.getElementById('fc1').value.trim());
   const vo=+document.getElementById('fc7').value;
   const dur=+document.getElementById('fca').value;
   const date=document.getElementById('fc8').value;
@@ -2414,19 +2384,19 @@ function saveImmo(){
   const prevIm=eid?DB.immobilisations.find(x=>x.id===eid):null;
   const obj={
     id:eid||UID(),
-    code:(()=>{const ex=document.getElementById('fc0').value.trim();if(eid)return ex;if(ex)return ex;return nextCode(des,document.getElementById('fc3').value.trim(),date);})(),
+    code:sanitize((()=>{const ex=document.getElementById('fc0').value.trim();if(eid)return ex;if(ex)return ex;return nextCode(des,document.getElementById('fc3').value.trim(),date);})()),
     designation:des,
-    categorie:document.getElementById('fc2').value,
-    classSYSCOA:document.getElementById('fc-syscoa')?.value||'',
-    invNum:document.getElementById('fc-inv-num')?.value.trim()||'',
-    serie:document.getElementById('fc-serie')?.value.trim()||'',
-    nature:document.getElementById('fc-nature')?.value||'',
-    marque:document.getElementById('fc3').value,
-    fournisseur:document.getElementById('fc4').value,
-    factureNum:document.getElementById('fc-facture')?.value.trim()||'',
-    financement:document.getElementById('fc6').value,
-    affectation:document.getElementById('fc5').value,
-    centreCoût:document.getElementById('fc-cc')?.value.trim()||'',
+    categorie:sanitize(document.getElementById('fc2').value),
+    classSYSCOA:sanitize(document.getElementById('fc-syscoa')?.value||''),
+    invNum:sanitize(document.getElementById('fc-inv-num')?.value.trim()||''),
+    serie:sanitize(document.getElementById('fc-serie')?.value.trim()||''),
+    nature:sanitize(document.getElementById('fc-nature')?.value||''),
+    marque:sanitize(document.getElementById('fc3').value),
+    fournisseur:sanitize(document.getElementById('fc4').value),
+    factureNum:sanitize(document.getElementById('fc-facture')?.value.trim()||''),
+    financement:sanitize(document.getElementById('fc6').value),
+    affectation:sanitize(document.getElementById('fc5').value),
+    centreCoût:sanitize(document.getElementById('fc-cc')?.value.trim()||''),
     axe:document.getElementById('fc-axe')?.value||'',
     etat:document.getElementById('fc-etat')?.value||'bon',
     vo,vr,
@@ -6472,32 +6442,8 @@ window.addEventListener('beforeunload',()=>{if(currentUser)sessionStorage.setIte
 
 // [chiffrement déplacé en haut]
 
-// ── 2. PROTECTION DEVTOOLS & F12 ──
-(function() {
-  document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
-  document.addEventListener('keydown', function(e) {
-    if (e.key === 'F12') e.preventDefault();
-    if (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(e.key)) e.preventDefault();
-    if (e.ctrlKey && e.key === 'U') e.preventDefault();
-  });
-  var _dv = { open: false };
-  setInterval(function() {
-    if (window.outerWidth - window.innerWidth > 160 || window.outerHeight - window.innerHeight > 160) {
-      if (!_dv.open) {
-        _dv.open = true;
-        if (typeof currentUser !== 'undefined' && currentUser) {
-          var app = document.getElementById('app');
-          var lp  = document.getElementById('login-page');
-          if (app) app.style.display = 'none';
-          if (lp)  lp.style.display  = 'flex';
-          currentUser = null;
-          var le = document.getElementById('login-err');
-          if (le) { le.textContent = 'Session fermée pour des raisons de sécurité.'; le.style.display = 'block'; }
-        }
-      }
-    } else { _dv.open = false; }
-  }, 1000);
-})();
+// ── 2. PROTECTION DEVTOOLS & F12 (Désactivée) ──
+/* Protection supprimée pour permettre le clic droit et l'inspection */
 
 // ── 3. SYSTÈME DE LICENCE ──
 const LIC_SK     = 'immogestion_license';

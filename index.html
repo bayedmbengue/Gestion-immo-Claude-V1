@@ -6,11 +6,13 @@
 <title>ImmoGestion — Gestion des Immobilisations</title>
 <link rel="stylesheet" href="style.css">
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="supabase.js"></script>
 </head>
 <body>
 <!-- LOGIN PAGE -->
-<div id="login-page" style="display:flex;min-height:100vh;align-items:center;justify-content:center;background:linear-gradient(135deg,#1B1F24 0%,#22262C 55%,#2C333B 100%);position:fixed;inset:0;z-index:9999">
-  <div style="background:#fff;border-radius:20px;padding:2.5rem 2rem;width:380px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+<div id="login-page" style="display:flex;min-height:100vh;align-items:center;justify-content:center;background:linear-gradient(135deg,#1B1F24 0%,#22262C 55%,#2C333B 100%);position:fixed;inset:0;z-index:9999;padding:1rem;">
+  <div style="background:#fff;border-radius:20px;padding:2.5rem 2rem;width:100%;max-width:380px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
     <div style="text-align:center;margin-bottom:2rem">
       <div style="width:56px;height:56px;background:var(--blue);border-radius:14px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:1rem">
         <svg width="28" height="28" viewBox="0 0 18 18" fill="#fff"><rect x="1" y="1" width="7" height="7" rx="1.5"/><rect x="10" y="1" width="7" height="7" rx="1.5"/><rect x="1" y="10" width="7" height="7" rx="1.5"/><rect x="10" y="10" width="7" height="7" rx="1.5"/></svg>
