@@ -72,7 +72,7 @@ body {
   transition: transform 0.25s ease;
   z-index: 200;
 }
-#ct { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+#ct { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
 
 #tb {
   height: 64px;
@@ -85,7 +85,7 @@ body {
   flex-shrink: 0;
   box-shadow: var(--shadow);
 }
-#main { flex: 1; overflow-y: auto; padding: 2rem 2.5rem; background: var(--bg); }
+#main { flex: 1; overflow-y: auto; padding: 2rem 2.5rem; background: var(--bg); min-width: 0; }
 
 #sb-overlay { display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.4); z-index: 199; backdrop-filter: blur(2px); }
 #btn-menu { display: none; width: 36px; height: 36px; border: 1px solid var(--border2); border-radius: var(--r); background: var(--surface); cursor: pointer; align-items: center; justify-content: center; flex-shrink: 0; }
@@ -528,11 +528,11 @@ code { font-family: var(--m); font-size: 12.5px; background: var(--surface2); pa
 /* Main Grid */
 .saas-main-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
   gap: 1.5rem;
 }
 @media (max-width: 1024px) {
-  .saas-main-grid { grid-template-columns: 1fr; }
+  .saas-main-grid { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* Cards */
@@ -715,10 +715,12 @@ code { font-family: var(--m); font-size: 12.5px; background: var(--surface2); pa
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-width: 0;
 }
 .saas-side-col {
   display: flex;
   flex-direction: column;
   gap: 1.5rem;
+  min-width: 0;
 }
 
