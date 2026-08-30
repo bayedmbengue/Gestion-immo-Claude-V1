@@ -1,0 +1,2021 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ImmoGestion — Gestion des Immobilisations</title>
+<link rel="stylesheet" href="style.css">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+<!-- LOGIN PAGE -->
+<div id="login-page" style="display:flex;min-height:100vh;align-items:center;justify-content:center;background:linear-gradient(135deg,#1B1F24 0%,#22262C 55%,#2C333B 100%);position:fixed;inset:0;z-index:9999">
+  <div style="background:#fff;border-radius:20px;padding:2.5rem 2rem;width:380px;box-shadow:0 20px 60px rgba(0,0,0,.25)">
+    <div style="text-align:center;margin-bottom:2rem">
+      <div style="width:56px;height:56px;background:var(--blue);border-radius:14px;display:inline-flex;align-items:center;justify-content:center;margin-bottom:1rem">
+        <svg width="28" height="28" viewBox="0 0 18 18" fill="#fff"><rect x="1" y="1" width="7" height="7" rx="1.5"/><rect x="10" y="1" width="7" height="7" rx="1.5"/><rect x="1" y="10" width="7" height="7" rx="1.5"/><rect x="10" y="10" width="7" height="7" rx="1.5"/></svg>
+      </div>
+      <div style="font-size:22px;font-weight:700;letter-spacing:-.5px">Immo<span style="color:var(--blue)">Gestion</span></div>
+      <div style="font-size:13px;color:var(--text3);margin-top:4px">Gestion des immobilisations</div>
+    </div>
+    <div id="login-err" style="display:none;background:var(--red-light);color:var(--red);border:1px solid #F7C1C1;padding:.65rem 1rem;border-radius:var(--r);font-size:13px;margin-bottom:1rem;text-align:center"></div>
+    <div id="login-info" style="display:none;background:var(--blue-light);color:var(--blue);border:1px solid #BFDBFE;padding:.65rem 1rem;border-radius:var(--r);font-size:12px;margin-bottom:1rem;text-align:center">
+      Si vous venez d'une version précédente, utilisez <strong>Accéder sans mot de passe</strong> ci-dessous pour réinitialiser les accès.
+    </div>
+    <div style="display:flex;flex-direction:column;gap:.85rem">
+      <div class="fgr"><label>Adresse email</label><input type="email" id="login-email" placeholder="email@organisation.sn" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div class="fgr"><label>Mot de passe</label><input type="password" id="login-pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <button class="btn p" onclick="doLogin()" style="width:100%;justify-content:center;padding:10px;font-size:14px;margin-top:.5rem;border-radius:var(--r)">Se connecter</button>
+    </div>
+    <div style="text-align:center;margin-top:1.5rem;font-size:11px;color:var(--text3);line-height:1.8">
+      <strong>Comptes de démonstration</strong><br>
+      a.diallo@org.sn / <em>admin123</em> (Admin)<br>
+      f.mbaye@org.sn / <em>compta123</em> (Comptable)<br>
+      o.seck@org.sn / <em>gest123</em> (Gestionnaire)
+    </div>
+    <div style="text-align:center;margin-top:.75rem">
+      <button onclick="bypassLogin()" style="background:none;border:none;font-size:11px;color:var(--text3);cursor:pointer;text-decoration:underline">
+        Accéder sans mot de passe (réinitialiser les accès)
+      </button>
+    </div>
+  </div>
+</div>
+
+<div id="app" style="display:none">
+
+<!-- SIDEBAR -->
+<!-- ═══ SIDEBAR ═══ -->
+<nav id="sb">
+  <div class="sb-logo">
+    <div class="logo-wrap">
+      <div class="logo-icon" id="sb-logo-icon"><svg width="18" height="18" viewBox="0 0 18 18"><rect x="1" y="1" width="7" height="7" rx="1.5"/><rect x="10" y="1" width="7" height="7" rx="1.5"/><rect x="1" y="10" width="7" height="7" rx="1.5"/><rect x="10" y="10" width="7" height="7" rx="1.5"/></svg></div>
+      <div><div class="logo-name">Immo<span>Gestion</span></div><div class="logo-ver">Version 2.0</div></div>
+    </div>
+  </div>
+  <div class="nav-sec expanded" onclick="toggleSection(this)">Tableau de bord</div>
+  <div class="ni active" onclick="nav('dashboard',this)"><svg viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h5v5H2zM9 2h5v5H9zM2 9h5v5H2zM9 9h5v5H9z"/></svg>Vue d'ensemble</div>
+  <div class="nav-sec expanded" onclick="toggleSection(this)">Gestion des actifs</div>
+  <div class="ni" onclick="nav('fiches',this)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1.5"/><line x1="5" y1="6" x2="11" y2="6"/><line x1="5" y1="9" x2="9" y2="9"/></svg>Fiches immobilisations</div>
+  <div class="ni" onclick="nav('inventaire',this)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h12M2 8h8M2 12h10"/><circle cx="13.5" cy="11" r="2.5"/></svg>Inventaire</div>
+  <div class="ni" onclick="nav('amortissements',this)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="2,12 5,7 8,9 11,4 14,6"/><line x1="2" y1="14" x2="14" y2="14"/></svg>Plans d'amortissement</div>
+  <div class="ni" onclick="nav('affectations',this)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8h10M8 3l5 5-5 5"/></svg>Affectations</div>
+  <div class="ni" onclick="nav('sorties',this)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M10 3l4 4-4 4M14 7H6M3 3v10"/></svg>Sorties d'actifs<span class="nbadge" id="nb-alerte" style="display:none"></span></div>
+  <div class="nav-sec expanded" onclick="toggleSection(this)">Planification</div>
+  <div class="ni" onclick="nav('revision',this)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 8c0-2.76 2.24-5 5-5s5 2.24 5 5-2.24 5-5 5"/><path d="M3 5V2M3 5H6"/><line x1="8" y1="5" x2="8" y2="8"/><line x1="8" y1="8" x2="11" y2="8"/></svg>Révision de plan</div>
+  <div class="ni" onclick="nav('budget',this)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="14" height="11" rx="1.5"/><path d="M5 3V1M11 3V1"/><line x1="1" y1="7" x2="15" y2="7"/><line x1="5" y1="10" x2="5" y2="11"/><line x1="8" y1="9" x2="8" y2="12"/><line x1="11" y1="10" x2="11" y2="11"/></svg>Budget prévisionnel</div>
+  <div class="nav-sec expanded" onclick="toggleSection(this)">Comptabilité</div>
+  <div class="ni" onclick="nav('ecritures',this)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="12" height="12" rx="1"/><line x1="5" y1="6" x2="11" y2="6"/><path d="M10 11l1 1 2-2"/></svg>Écritures comptables</div>
+  <div class="ni" onclick="nav('rapports',this)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2h8l3 3v10H3z"/><line x1="6" y1="8" x2="11" y2="8"/></svg>Rapports & états</div>
+  <div class="ni" onclick="nav('journal',this)">
+    <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" width="15" height="15">
+      <rect x="2" y="1" width="12" height="14" rx="2"/>
+      <line x1="5" y1="5" x2="11" y2="5"/>
+      <line x1="5" y1="8" x2="11" y2="8"/>
+      <line x1="5" y1="11" x2="8" y2="11"/>
+      <circle cx="12" cy="11" r="2.5" fill="currentColor" stroke="none" opacity=".7"/>
+    </svg>
+    Journal d'audit
+    <span id="ni-badge-journal" style="background:#EF4444;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:auto;display:none"></span>
+  </div>
+  <div class="nav-sec expanded" id="nav-admin-sec" onclick="toggleSection(this)">Administration</div>
+  <div class="ni nav-admin" onclick="nav('parametres',this)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2"/></svg>Paramètres</div>
+  <div class="ni nav-admin" onclick="nav('utilisateurs',this)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 14c0-2.76 2.24-5 5-5s5 2.24 5 5"/><path d="M12 7l1 1 2-2"/></svg>Utilisateurs & droits</div>
+  <div class="sb-footer">
+    <div style="display:flex;gap:4px;margin-bottom:8px">
+      <button onclick="exportBackupJSON()" title="Sauvegarder" style="flex:1;padding:5px 6px;border:1px solid rgba(255,255,255,.15);border-radius:var(--r);background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px" onmouseover="this.style.background='rgba(255,255,255,.15)'" onmouseout="this.style.background='rgba(255,255,255,.08)'">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 1v7M3.5 5.5L6 8l2.5-2.5M1 9h10v2H1z"/></svg>Sauvegarde
+      </button>
+      <button onclick="importBackupJSON()" title="Restaurer" style="padding:5px 8px;border:1px solid rgba(255,255,255,.15);border-radius:var(--r);background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);font-size:11px;cursor:pointer" onmouseover="this.style.background='rgba(255,255,255,.15)'" onmouseout="this.style.background='rgba(255,255,255,.08)'" aria-label="Action">>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6 8V1M3.5 3.5L6 1l2.5 2.5M1 9h10v2H1z"/></svg>
+      </button>
+    </div>
+    <div class="uc" style="gap:8px">
+      <div class="av" id="uav">AD</div>
+      <div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;color:#fff;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="unom">Admin</div><div style="font-size:11px;color:rgba(255,255,255,.55)" id="urole">Administrateur</div></div>
+      <button title="Changer le mot de passe" onclick="openM('m-chgpwd')" style="width:28px;height:28px;border:none;background:rgba(255,255,255,.12);border-radius:50%;cursor:pointer;color:rgba(255,255,255,.8);display:flex;align-items:center;justify-content:center;margin-right:4px" aria-label="Action">><svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="6" width="8" height="7" rx="1.5"/><path d="M5 6V4a2 2 0 014 0v2"/></svg></button><button title="Se déconnecter" onclick="doLogout()" style="width:28px;height:28px;border:none;background:rgba(255,255,255,.1);border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center" onmouseover="this.style.background='rgba(220,38,38,.4)'" onmouseout="this.style.background='rgba(255,255,255,.1)'" aria-label="Action">>
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="rgba(255,255,255,.8)" stroke-width="1.5"><path d="M5 2H2v10h3M9 4l3 3-3 3M12 7H5"/></svg>
+      </button>
+    </div>
+  </div>
+</nav>
+
+<div id="sb-overlay" onclick="toggleSidebar(false)"></div>
+<div id="ct">
+<div id="tb">
+  <button id="btn-menu" onclick="toggleSidebar()" title="Menu" style="width:34px;height:34px;border:1px solid var(--border2);border-radius:var(--r);background:var(--surface);cursor:pointer;display:none;align-items:center;justify-content:center;flex-shrink:0" aria-label="Action">>
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="2" y1="4" x2="14" y2="4"/><line x1="2" y1="8" x2="14" y2="8"/><line x1="2" y1="12" x2="14" y2="12"/></svg>
+  </button>
+  <div style="flex:1"><span class="tb-title" id="tbt">Tableau de bord</span><span class="tb-sub" id="tbs"></span></div>
+  <div class="tb-right">
+    <span class="tb-date" id="tbd"></span>
+    <button class="btn sm" onclick="changePwdSelf()" title="Changer mon mot de passe" style="padding:5px 10px" aria-label="Action">><svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="6" width="9" height="6" rx="1"/><path d="M4 6V4a2.5 2.5 0 015 0v2"/></svg></button>
+    <button onclick="openLicenseModal()" class="btn sm" style="gap:5px" title="Gestion de la licence">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="5" width="11" height="8" rx="1.5"/><path d="M4 5V3.5a2.5 2.5 0 015 0V5"/></svg>
+      Licence
+    </button>
+    <button onclick="backupData()" class="btn sm" style="gap:5px" title="Sauvegarder les données">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 9v2h9V9M6.5 1v6M4 5l2.5 2.5L9 5"/></svg>
+      Sauvegarder
+    </button>
+    <button onclick="restoreData()" class="btn sm" style="gap:5px" title="Restaurer depuis une sauvegarde">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4V2h9v2M6.5 12V6M4 8l2.5-2.5L9 8"/></svg>
+      Restaurer
+    </button>
+    <button class="btn p sm" data-need-write id="btn-top-new" onclick="if(guardWrite())openNewImmo()">+ Nouvelle immobilisation</button>
+  </div>
+</div>
+<div id="main">
+<div id="license-banner" style="display:none;align-items:center;gap:8px;padding:8px 1.75rem;font-size:12px;font-weight:500;background:var(--amber-light,#FEF3C7);color:#92400E;border-bottom:2px solid #D97706"></div>
+
+<!-- ====== DASHBOARD ====== -->
+<div class="page active saas-dash" id="page-dashboard">
+  <!-- En-tête (Header) géré par JS -->
+  <div id="saas-hero"></div>
+
+  <!-- Cartes KPI (Rangée de 4) -->
+  <div class="saas-kpi-grid" id="saas-kpi-grid"></div>
+
+  <!-- Section principale : Graphes & Tableaux -->
+  <div class="saas-main-grid">
+    <!-- Colonne Principale (Gauche) -->
+    <div class="saas-main-col">
+      <!-- Graphique Principal -->
+      <div class="saas-card">
+        <div class="saas-card-header">
+          <h3>Évolution de la VNC (12 mois)</h3>
+          <select id="saas-chart-filter" onchange="rdDash()">
+            <option value="this_year">Cette année</option>
+            <option value="last_year">L'année dernière</option>
+          </select>
+        </div>
+        <div class="saas-card-body">
+          <canvas id="saasMainChart" style="width: 100%; height: 300px;"></canvas>
+        </div>
+      </div>
+      
+      <!-- Top 5 Tableau -->
+      <div class="saas-card">
+        <div class="saas-card-header">
+          <h3>Dernières immobilisations</h3>
+          <button class="saas-btn-link" onclick="nav('fiches',null)">Voir tout</button>
+        </div>
+        <div class="saas-table-wrap">
+          <table class="saas-table" style="table-layout: fixed; min-width: 900px;">
+            <thead>
+              <tr>
+                <th style="width: 250px;">Code</th>
+                <th style="width: auto;">Désignation</th>
+                <th style="width: 120px;">V. Origine</th>
+                <th style="width: 120px;">VNC</th>
+                <th style="width: 130px; text-align: right;">Date d'acq.</th>
+              </tr>
+            </thead>
+            <tbody id="saas-recent"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Colonne Secondaire (Droite) -->
+    <div class="saas-side-col">
+      <!-- Donut Chart -->
+      <div class="saas-card">
+        <div class="saas-card-header">
+          <h3>Répartition par catégorie</h3>
+        </div>
+        <div class="saas-card-body" style="display:flex; flex-direction:column; align-items:center; gap:1.5rem;">
+          <div style="width: 100%; max-width: 200px; position: relative;">
+             <canvas id="saasDonutChart"></canvas>
+             <!-- Center label for Donut is managed via JS plugin or absolute div, we will do absolute div -->
+             <div id="saas-donut-center" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none;">
+                <div style="font-size: 11px; color: var(--text3); font-weight: 500;">TOTAL VNC</div>
+                <div id="saas-donut-total" style="font-size: 14px; font-weight: 700; color: var(--text);"></div>
+             </div>
+          </div>
+          <div id="saas-donut-legend" style="width: 100%;"></div>
+        </div>
+      </div>
+
+      <!-- À Surveiller -->
+      <div class="saas-card">
+        <div class="saas-card-header">
+          <h3>À surveiller</h3>
+          <button class="saas-btn-link" onclick="nav('sorties',null)">Voir tout</button>
+        </div>
+        <div class="saas-card-body" id="saas-alert" style="padding: 0;"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== FICHES ====== -->
+<div class="page" id="page-fiches">
+  <div class="ph">
+    <div><h1>Fiches immobilisations</h1><p id="fiches-count">Chargement...</p></div>
+    <div class="ph-r">
+      <div class="vt">
+        <button class="vb active" id="vbt" onclick="setView('table')" aria-label="Action">><svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="1" width="12" height="3"/><rect x="1" y="6" width="12" height="3"/><rect x="1" y="11" width="12" height="3"/></svg></button>
+        <button class="vb" id="vbc" onclick="setView('cards')" aria-label="Action">><svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor"><rect x="1" y="1" width="5" height="5"/><rect x="8" y="1" width="5" height="5"/><rect x="1" y="8" width="5" height="5"/><rect x="8" y="8" width="5" height="5"/></svg></button>
+      </div>
+      <button class="btn" onclick="openM('m-import')" style="gap:6px">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.5 1v8M3.5 6l3 3 3-3M1 10h11v2H1z"/></svg>
+        Importer CSV
+      </button>
+      <button class="btn p" data-need-write id="btn-f-new">+ Nouvelle fiche</button>
+    </div>
+  </div>
+  <div class="sb2">
+    <input type="text" id="flt-search" placeholder="Rechercher code, désignation, fournisseur..." oninput="rdFiches()">
+    <select id="flt-cat" onchange="rdFiches()"><option value="">Toutes catégories</option></select>
+    <select id="flt-st" onchange="rdFiches()"><option value="">Tous statuts</option><option value="actif">Actif</option><option value="amorti">Amorti (VNC=0)</option><option value="sorti">Sorti</option></select>
+    <select id="flt-fin" onchange="rdFiches()"><option value="">Tout financement</option><option>Fonds propres</option><option>Subventions</option></select>
+  </div>
+  <div id="ftv"><div class="card"><div class="tw"><table style="table-layout:fixed;min-width:900px"><thead><tr>
+    <th style="width:36px;text-align:center;color:var(--text3)">#</th>
+    <th style="width:140px">Code</th>
+    <th style="width:auto">Désignation</th>
+    <th style="width:120px">Catégorie</th>
+    <th style="width:90px">Financement</th>
+    <th style="width:110px;text-align:right">V. Origine</th>
+    <th style="width:60px;text-align:right">Taux</th>
+    <th style="width:110px;text-align:right">Cumul</th>
+    <th style="width:110px;text-align:right">VNC</th>
+    <th style="width:120px">Affectation</th>
+    <th style="width:70px">Statut</th>
+    <th style="width:80px;text-align:center">Actions</th>
+  </tr></thead><tbody id="ftb"></tbody></table></div></div></div>
+  <div id="fcv" style="display:none"><div class="icg" id="fcc"></div></div>
+</div>
+
+<!-- ====== INVENTAIRE ====== -->
+<div class="page" id="page-inventaire">
+  <div class="ph">
+    <div><h1>Inventaire des immobilisations</h1><p>Valorisation complète à une date donnée</p></div>
+    <div class="ph-r">
+      <button class="btn" onclick="showSavedInv()" style="display:flex;align-items:center;gap:5px">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="11" height="11" rx="1.5"/><line x1="4" y1="1" x2="4" y2="5"/><line x1="9" y1="1" x2="9" y2="5"/><line x1="1" y1="7" x2="12" y2="7"/></svg>
+        Situations sauvegardées
+      </button>
+      <button class="btn" onclick="exportInv()">Exporter CSV</button>
+      <button class="btn" onclick="openInvContra()" style="display:flex;align-items:center;gap:5px">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4h9M2 7h6M2 10h8"/><circle cx="11" cy="9.5" r="2"/><path d="M10 9.5h2M11 8.5v2"/></svg>
+        Contradictoire
+      </button>
+      <button class="btn p" onclick="genInv()">Générer</button>
+    </div>
+  </div>
+
+  <!-- Situations sauvegardées -->
+  <div id="inv-saved-wrap" style="display:none;margin-bottom:1rem">
+    <div class="card">
+      <div class="ch"><h3>Situations d'inventaire sauvegardées</h3><button class="btn xs" onclick="document.getElementById('inv-saved-wrap').style.display='none'">×</button></div>
+      <div class="cb" id="inv-saved-list" style="display:flex;flex-direction:column;gap:8px">
+        <p style="color:var(--text3);font-size:13px">Aucune situation sauvegardée.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card"><div class="ch"><h3>Paramètres de l'inventaire</h3></div><div class="cb">
+    <div class="fg" style="grid-template-columns:1fr 1fr 1fr 1fr 1fr">
+      <div class="fgr"><label>Date d'inventaire</label><input type="date" id="inv-d"></div>
+      <div class="fgr"><label>Intitulé (optionnel)</label><input type="text" id="inv-label" placeholder="Ex : Inventaire annuel 2025"></div>
+      <div class="fgr"><label>Catégorie</label><select id="inv-c"><option value="">Toutes les catégories</option></select></div>
+      <div class="fgr"><label>Lieu d'affectation</label><select id="inv-l-sel" onchange="document.getElementById('inv-l').value=this.value"><option value="">Tous les lieux</option></select></div>
+      <div class="fgr"><label>Statut</label><select id="inv-st"><option value="actif">Actifs uniquement</option><option value="rebut">Mis au rebut</option><option value="tous">Tous</option></select></div>
+    </div>
+    <input type="hidden" id="inv-l">
+  </div></div>
+
+  <div id="inv-res" style="display:none">
+    <div class="kgrid" id="inv-kpi"></div>
+    <div class="card">
+      <div class="ch">
+        <div>
+          <h3 id="inv-title">Inventaire</h3>
+          <span class="badge b" id="inv-cnt">0</span>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn sm" onclick="saveInvSituation()" style="display:flex;align-items:center;gap:5px">
+            <svg width="12" height="12" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.5 1v8M4 6l2.5 3L9 6"/><rect x="1" y="10" width="11" height="2" rx="1"/></svg>
+            Sauvegarder
+          </button>
+          <button class="btn sm" onclick="printInv()" style="display:flex;align-items:center;gap:5px">
+            <svg width="12" height="12" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="4" width="11" height="7" rx="1"/><path d="M3 4V2h7v2"/><rect x="3" y="7" width="7" height="4"/><circle cx="10.5" cy="6" r=".8" fill="currentColor" stroke="none"/></svg>
+            Imprimer
+          </button>
+        </div>
+      </div>
+      <div class="tw"><table class="at" style="table-layout:fixed;min-width:900px"><thead><tr>
+        <th style="width:140px">Code</th>
+        <th style="width:auto">Désignation</th>
+        <th style="width:80px">Nature</th>
+        <th style="width:120px">Catégorie</th>
+        <th style="width:120px">Lieu d'affectation</th>
+        <th style="width:80px">État</th>
+        <th style="width:100px">Date acq.</th>
+        <th style="width:110px;text-align:right">V. Origine</th>
+        <th style="width:110px;text-align:right">Cumul amort.</th>
+        <th style="width:110px;text-align:right">VNC à la date</th>
+        <th style="width:80px;text-align:right">% amorti</th>
+        <th style="width:30px"></th>
+      </tr></thead><tbody id="inv-tb"></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- Inventaire contradictoire -->
+  <div id="inv-contra-wrap" style="display:none">
+    <div class="card">
+      <div class="ch">
+        <h3>Inventaire contradictoire</h3>
+        <div style="display:flex;gap:6px">
+          <span class="badge g" id="ic-found-badge">0 trouvés</span>
+          <span class="badge r" id="ic-missing-badge">0 manquants</span>
+          <span class="badge a" id="ic-surplus-badge">0 en surplus</span>
+        </div>
+        <button class="btn xs" onclick="exportInvContra()">Export rapport</button>
+      </div>
+      <div class="cb" style="padding:0 1rem 1rem">
+        <div style="margin-bottom:1rem;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+          <input type="text" id="ic-scan" placeholder="Scanner code ou saisir N° inventaire/code…" style="flex:1;min-width:200px;font-family:var(--m)" oninput="icScan()">
+          <button class="btn p sm" onclick="icMarkAll()">Tout cocher</button>
+          <button class="btn sm" onclick="icReset()">Réinitialiser</button>
+        </div>
+        <div class="tabs">
+          <div class="tab active" onclick="stab(this,'ic-all')">Tous <span class="nbadge" id="ic-nb-all" style="background:var(--blue)"></span></div>
+          <div class="tab" onclick="stab(this,'ic-missing')">Manquants <span class="nbadge" style="background:var(--red)" id="ic-nb-missing"></span></div>
+          <div class="tab" onclick="stab(this,'ic-surplus')">En surplus <span class="nbadge" style="background:var(--amber)" id="ic-nb-surplus"></span></div>
+        </div>
+        <div class="tp active" id="ic-all">
+          <div class="tw"><table style="table-layout:fixed;min-width:1050px;width:100%"><thead><tr>
+            <th style="width:32px"></th>
+            <th style="width:150px">Code</th>
+            <th style="width:100px">N° Inv.</th>
+            <th style="width:auto">Désignation</th>
+            <th style="width:110px">Nature</th>
+            <th style="width:130px">Catégorie</th>
+            <th style="width:110px">Lieu attendu</th>
+            <th style="width:100px;text-align:right">V. Origine</th>
+            <th style="width:100px;text-align:right">VNC</th>
+            <th style="width:90px">État attendu</th><th style="width:110px">État constaté</th><th style="width:130px">Observations</th>
+          </tr></thead><tbody id="ic-tb-all"></tbody></table></div>
+        </div>
+        <div class="tp" id="ic-missing">
+          <div class="tw"><table style="table-layout:fixed;min-width:940px;width:100%"><thead><tr>
+            <th style="width:150px">Code</th>
+            <th style="width:100px">N° Inv.</th>
+            <th style="width:auto">Désignation</th>
+            <th style="width:110px">Nature</th>
+            <th style="width:130px">Catégorie</th>
+            <th style="width:110px">Lieu attendu</th>
+            <th style="width:100px;text-align:right">V. Origine</th>
+            <th style="width:100px;text-align:right">Cumul amort.</th>
+            <th style="width:100px;text-align:right">VNC</th>
+            <th style="width:80px;text-align:right">% amorti</th>
+          </tr></thead><tbody id="ic-tb-missing"></tbody></table></div>
+        </div>
+        <div class="tp" id="ic-surplus">
+          <div class="tw"><table><thead><tr><th>Code / Réf.</th><th>Désignation saisie</th><th>Lieu trouvé</th><th>Observations</th><th></th></tr></thead><tbody id="ic-tb-surplus"></tbody></table></div>
+          <div style="margin-top:8px;display:flex;gap:6px">
+            <input type="text" id="ic-surplus-code" placeholder="Code ou référence…" style="flex:1;font-family:var(--m)">
+            <input type="text" id="ic-surplus-des" placeholder="Désignation…" style="flex:2">
+            <input type="text" id="ic-surplus-lieu" placeholder="Lieu trouvé…" style="flex:1">
+            <button class="btn p sm" onclick="icAddSurplus()">+ Ajouter</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:1rem;display:flex;gap:8px;justify-content:flex-end">
+      <button class="btn" onclick="printInvContra()">🖨 Imprimer le rapport</button>
+      <button class="btn" onclick="exportInvContra()">Export CSV</button>
+      <button class="btn d" onclick="closeInvContra()">Annuler</button>
+      <button class="btn p" onclick="validerInvContra()">Valider l'inventaire contradictoire</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== AMORTISSEMENTS ====== -->
+<div class="page" id="page-amortissements">
+  <div class="ph">
+    <div><h1>Plans d'amortissement</h1><p>Linéaire et dégressif — prorata temporis</p></div>
+    <div class="ph-r">
+      <button class="btn" onclick="exportAmortXLS()">Exporter Excel</button>
+      <button class="btn" onclick="exportAmortPDF()">Exporter PDF</button>
+    </div>
+  </div>
+  <div class="card" style="margin-bottom:1.25rem"><div class="ch"><h3>Sélectionner une immobilisation</h3></div><div class="cb">
+    <div class="fg" style="grid-template-columns:1fr 1fr 1fr">
+      <!-- Champ de recherche -->
+      <div class="fgr" style="grid-column:1/-1;position:relative">
+        <label>Immobilisation</label>
+        <input type="text" id="asel-search" placeholder="Rechercher par code, désignation, catégorie…"
+          autocomplete="off" oninput="amortSearchInput()" onfocus="amortSearchOpen()" onkeydown="amortSearchKey(event)"
+          style="width:100%;padding-right:32px">
+        <button onclick="amortSearchClear()" title="Effacer" style="position:absolute;right:8px;top:calc(50% + 8px);transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;line-height:1;padding:2px">×</button>
+        <input type="hidden" id="asel">
+        <div id="asel-dropdown" style="display:none;position:absolute;z-index:2000;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);box-shadow:var(--shadow-md);max-height:260px;overflow-y:auto;width:100%;margin-top:2px;left:0">
+          <div id="asel-list"></div>
+        </div>
+      </div>
+      <!-- Champs synthèse -->
+      <div class="fgr"><label>Valeur d'origine</label><input type="text" id="aivo" readonly style="color:var(--blue);font-family:var(--m)"></div>
+      <div class="fgr"><label>VNC actuelle</label><input type="text" id="aivnc" readonly style="color:var(--green);font-family:var(--m)"></div>
+      <div class="fgr"><label>Méthode</label><input type="text" id="aimeth" readonly></div>
+      <div class="fgr"><label>Cumul amortissements</label><input type="text" id="aicum" readonly style="color:var(--red);font-family:var(--m)"></div>
+    </div>
+  </div></div>
+  <div class="card">
+    <div class="ch"><h3 id="apt">Plan d'amortissement</h3></div>
+    <div id="amort-info-bar" style="display:none;padding:.75rem 1.25rem;background:var(--blue-light);border-bottom:1px solid var(--border2)"></div>
+    <div class="tw"><table class="at"><thead><tr><th>Exercice</th><th>V. Début</th><th>Taux</th><th>Dotation</th><th>Cumul amort.</th><th>VNC fin</th><th>% amorti</th></tr></thead><tbody id="atb"></tbody></table></div>
+  </div>
+</div>
+
+<!-- ====== AFFECTATIONS ====== -->
+<div class="page" id="page-affectations">
+  <div class="ph"><div><h1>Gestion des affectations</h1><p>Mouvements et transferts d'immobilisations</p></div><div class="ph-r"><button class="btn p" data-need-write onclick="if(guardWrite())openAffModal()">+ Nouvelle affectation</button></div></div>
+  <div class="sb2" style="margin-bottom:1rem">
+    <select id="aff-flt-immo" onchange="rdAff()" style="padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:13px;font-family:var(--f);background:var(--surface);color:var(--text)"><option value="">Toutes les immobilisations</option></select>
+    <select id="aff-flt-lieu" onchange="rdAff()" style="padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:13px;font-family:var(--f);background:var(--surface);color:var(--text)"><option value="">Tous les lieux</option></select>
+    <select id="aff-flt-resp" onchange="rdAff()" style="padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:13px;font-family:var(--f);background:var(--surface);color:var(--text)"><option value="">Tous les responsables</option></select>
+    <button class="btn sm" onclick="document.getElementById('aff-flt-immo').value='';document.getElementById('aff-flt-lieu').value='';document.getElementById('aff-flt-resp').value='';rdAff()">Réinitialiser</button>
+    <span id="aff-flt-count" style="font-size:12px;color:var(--text3);margin-left:4px"></span>
+  </div>
+  <div class="card"><div class="ch"><h3>Historique des affectations</h3></div>
+    <div class="tw"><table><thead><tr><th>Date</th><th>Code</th><th>Désignation</th><th>Précédente</th><th>Nouvelle</th><th>Responsable</th><th>Motif</th><th style="width:70px;text-align:center">Actions</th></tr></thead><tbody id="aff-tb"></tbody></table></div>
+  </div>
+  <div class="card"><div class="ch"><h3>Répartition par lieu</h3></div><div class="cb" id="aff-chart"></div></div>
+</div>
+
+<!-- ====== SORTIES ====== -->
+<div class="page" id="page-sorties">
+  <style>#page-sorties table td { max-width: none; }</style>
+  <div class="ph"><div><h1>Sorties d'actifs</h1><p>Cession · Mise au rebut · Vol — dotation complémentaire automatique</p></div><div class="ph-r"><button class="btn p" data-need-write onclick="if(guardWrite())openSortie(null)">+ Enregistrer une sortie</button></div></div>
+  <div class="kgrid" style="grid-template-columns:repeat(4,1fr)">
+    <div class="kpi"><div class="kpi-l">En attente</div><div class="kpi-v a" id="snb-att">0</div><div class="kpi-s">À valider</div></div>
+    <div class="kpi"><div class="kpi-l">Cessions</div><div class="kpi-v b" id="snbc">0</div></div>
+    <div class="kpi"><div class="kpi-l">Mises au rebut</div><div class="kpi-v r" id="snbr">0</div></div>
+    <div class="kpi"><div class="kpi-l">Vols / Sinistres</div><div class="kpi-v r" id="snbv">0</div></div>
+  </div>
+  <div class="tabs">
+    <div class="tab active" onclick="stab(this,'sort-att')">En attente de validation <span class="nbadge" id="nb-sort-att" style="display:none"></span></div>
+    <div class="tab" onclick="stab(this,'sort-val')">Sorties validées</div>
+  </div>
+  <div class="tp active" id="sort-att">
+    <div class="card"><div class="ch"><h3>Sorties en attente de validation</h3></div>
+      <div class="tw"><table><thead><tr><th>Code</th><th>Désignation</th><th>Motif</th><th>Date</th><th>V. Origine</th><th>VNC</th><th>Actions</th></tr></thead><tbody id="sort-att-tb"></tbody></table></div>
+    </div>
+  </div>
+  <div class="tp" id="sort-val">
+    <div class="card">
+      <div class="ch" style="display:flex;justify-content:space-between;align-items:center">
+        <h3>Sorties validées</h3>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span style="font-size:12px;color:var(--text3)">Du</span>
+          <input type="date" id="sort-flt-deb" onchange="rdSorties()" style="padding:6px 8px;border:1px solid var(--border2);border-radius:var(--r);font-size:12px;font-family:var(--f);background:var(--surface);color:var(--text)">
+          <span style="font-size:12px;color:var(--text3)">au</span>
+          <input type="date" id="sort-flt-fin" onchange="rdSorties()" style="padding:6px 8px;border:1px solid var(--border2);border-radius:var(--r);font-size:12px;font-family:var(--f);background:var(--surface);color:var(--text)">
+          <button class="btn xs" onclick="document.getElementById('sort-flt-deb').value='';document.getElementById('sort-flt-fin').value='';rdSorties()">X</button>
+          <button class="btn sm" onclick="printSortiesPeriod()" style="margin-left:1rem">🖨️ État consolidé</button>
+        </div>
+      </div>
+      <div class="tw"><table><thead><tr>
+        <th style="white-space:nowrap">Code</th>
+        <th style="min-width:200px">Désignation</th>
+        <th style="white-space:nowrap">Motif</th>
+        <th style="white-space:nowrap">Date</th>
+        <th style="white-space:nowrap;text-align:right">V. Origine</th>
+        <th style="white-space:nowrap;text-align:right">Cumul</th>
+        <th style="white-space:nowrap;text-align:right">Dot. compl.</th>
+        <th style="white-space:nowrap;text-align:right">VNC sortie</th>
+        <th style="white-space:nowrap;text-align:right">Prix cession</th>
+        <th style="white-space:nowrap;text-align:right">Résultat</th>
+        <th style="white-space:nowrap">Écriture</th>
+        <th style="width:100px;text-align:center;white-space:nowrap">Actions</th>
+      </tr></thead><tbody id="sort-tb"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== RÉVISION DE PLAN ====== -->
+<div class="page" id="page-revision">
+  <style>
+    #page-revision table td { max-width: none; white-space: nowrap; }
+    #page-revision table th { white-space: nowrap; }
+  </style>
+  <div class="ph">
+    <div><h1>Révision de plan d'amortissement</h1><p>Modifications prospectives conformes IAS 8 / SYSCOHADA — la révision ne modifie pas les dotations passées</p></div>
+    <div class="ph-r">
+      <button class="btn" onclick="exportRevisions()">Exporter CSV</button>
+      <button class="btn" onclick="printRevisions()">🖨️ Imprimer</button>
+    </div>
+  </div>
+
+  <!-- Sélection de l'immobilisation -->
+  <div class="card" style="margin-bottom:1.25rem">
+    <div class="ch"><h3>Sélectionner une immobilisation à réviser</h3></div>
+    <div class="cb">
+      <div class="fg" style="grid-template-columns:2fr 1fr 1fr 1fr;align-items:flex-end">
+        <div class="fgr" style="position:relative">
+          <label>Immobilisation</label>
+          <input type="text" id="rev-search" placeholder="Rechercher code, désignation…" autocomplete="off"
+            oninput="revSearchInput()" onfocus="revSearchOpen()" onkeydown="revSearchKey(event)" style="width:100%;padding-right:32px">
+          <button onclick="revSearchClear()" style="position:absolute;right:8px;top:calc(50% + 8px);transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px">×</button>
+          <input type="hidden" id="rev-immo-id">
+          <div id="rev-dropdown" style="display:none;position:absolute;z-index:2000;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);box-shadow:var(--shadow-md);max-height:220px;overflow-y:auto;width:100%;margin-top:2px;left:0"><div id="rev-dropdown-list"></div></div>
+        </div>
+        <div class="fgr"><label>VNC actuelle</label><input type="text" id="rev-vnc-now" readonly style="color:var(--green);font-family:var(--m)"></div>
+        <div class="fgr"><label>Durée restante</label><input type="text" id="rev-dur-rest" readonly style="font-family:var(--m)"></div>
+        <div class="fgr"><label>Méthode actuelle</label><input type="text" id="rev-meth-now" readonly></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Formulaire de révision -->
+  <div class="card" style="margin-bottom:1.25rem" id="rev-form-card" style="display:none">
+    <div class="ch"><h3>Paramètres de la révision</h3></div>
+    <div class="cb">
+      <div class="alert i" style="margin-bottom:1rem">⚖ Conformément à IAS 8 et SYSCOHADA, la révision est <strong>prospective</strong> : seules les dotations futures sont recalculées à partir de la date de révision. Les exercices clôturés restent inchangés.</div>
+      <div class="fg c3" style="margin-bottom:.75rem">
+        <div class="fgr"><label>Date de révision *</label><input type="date" id="grev-date" oninput="calcGRevision()"></div>
+        <div class="fgr"><label>Nouvelle durée résiduelle (années) *</label><input type="number" id="grev-dur" placeholder="Ex : 8" min="1" oninput="calcGRevision()"></div>
+        <div class="fgr"><label>Nouvelle méthode</label><select id="grev-meth" onchange="calcGRevision()"><option value="lin">Linéaire</option><option value="deg">Dégressif</option></select></div>
+        <div class="fgr"><label>Motif de la révision *</label><input type="text" id="grev-motif" placeholder="Changement technologique, révision technique…"></div>
+      </div>
+      <div id="grev-preview" style="display:none;padding:.85rem 1rem;background:var(--amber-light);border:1px solid #FAC775;border-radius:var(--r);font-size:13px;margin-bottom:.75rem"></div>
+      <!-- Tableau comparatif avant/après -->
+      <div id="grev-compare" style="display:none;margin-bottom:.75rem">
+        <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.06em">Plan comparatif avant / après révision</div>
+        <div class="tw" style="max-height:280px;overflow-y:auto">
+          <table class="at">
+            <thead><tr><th>Exercice</th><th style="text-align:right">Avant révision (Dotation)</th><th style="text-align:right">Après révision (Dotation)</th><th style="text-align:right">Écart</th><th style="text-align:right">VNC après</th></tr></thead>
+            <tbody id="grev-compare-tb"></tbody>
+          </table>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px">
+        <button class="btn p" onclick="appliquerGRevision()" data-need-write>Appliquer la révision</button>
+        <button class="btn" onclick="calcGRevision()">Calculer l'impact</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Historique global des révisions -->
+  <div class="card">
+    <div class="ch">
+      <h3>Historique de toutes les révisions</h3>
+      <span class="badge b" id="rev-hist-count">0</span>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr>
+          <th>Date révision</th><th>Code</th><th>Désignation</th><th>Catégorie</th>
+          <th>Ancienne méthode/durée</th><th>Nouvelle méthode/durée</th>
+          <th style="text-align:right">VNC à la révision</th>
+          <th style="text-align:right">Δ dotation/an</th>
+          <th>Motif</th><th>Par</th>
+        </tr></thead>
+        <tbody id="grev-hist-tb"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ====== BUDGET PRÉVISIONNEL ====== -->
+<div class="page" id="page-budget">
+  <div class="ph">
+    <div><h1>Budget prévisionnel</h1><p>Projection des dotations et planification des acquisitions futures</p></div>
+    <div class="ph-r">
+      <button class="btn" onclick="exportBudget()">Exporter CSV</button>
+      <button class="btn p" onclick="openBudgetModal()">+ Saisir un budget</button>
+    </div>
+  </div>
+
+  <!-- Paramètres de projection -->
+  <div class="card" style="margin-bottom:1.25rem">
+    <div class="ch"><h3>Paramètres de la projection</h3></div>
+    <div class="cb">
+      <div class="fg" style="grid-template-columns:1fr 1fr 1fr 1fr;align-items:flex-end">
+        <div class="fgr">
+          <label>Exercice de départ</label>
+          <input type="number" id="bud-yr-start" placeholder="2025" min="2020" max="2040" value="" oninput="rdBudget()">
+        </div>
+        <div class="fgr">
+          <label>Horizon (années)</label>
+          <select id="bud-horizon" onchange="rdBudget()">
+            <option value="3">3 ans</option>
+            <option value="5" selected>5 ans</option>
+            <option value="10">10 ans</option>
+          </select>
+        </div>
+        <div class="fgr">
+          <label>Catégorie</label>
+          <select id="bud-cat" onchange="rdBudget()"><option value="">Toutes les catégories</option></select>
+        </div>
+        <div style="display:flex;gap:6px">
+          <button class="btn p" onclick="rdBudget()">Calculer</button>
+          <button class="btn" onclick="resetBudgetLines()">Réinitialiser saisies</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- KPIs budget -->
+  <div class="kgrid" id="bud-kpi" style="grid-template-columns:repeat(4,1fr)"></div>
+
+  <!-- Tableau principal -->
+  <div class="card" style="margin-bottom:1.25rem">
+    <div class="ch">
+      <h3>Projection des dotations par exercice</h3>
+      <span style="font-size:11px;color:var(--text3)">Dotations calculées automatiquement sur le parc existant + acquisitions planifiées</span>
+    </div>
+    <div class="tw">
+      <table>
+        <thead id="bud-thead"></thead>
+        <tbody id="bud-tbody"></tbody>
+        <tfoot id="bud-tfoot"></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- Graphique en barres SVG -->
+  <div class="card" style="margin-bottom:1.25rem">
+    <div class="ch"><h3>Visualisation — Dotations prévisionnelles vs Budget saisi</h3></div>
+    <div class="cb" id="bud-chart" style="overflow-x:auto"></div>
+  </div>
+
+  <!-- Acquisitions planifiées -->
+  <div class="card">
+    <div class="ch">
+      <h3>Acquisitions planifiées</h3>
+      <button class="btn p sm" onclick="openBudgetModal()" data-need-write>+ Ajouter</button>
+    </div>
+    <div class="tw">
+      <table>
+        <thead><tr><th>Exercice</th><th>Désignation prévisionnelle</th><th>Catégorie</th><th style="text-align:right">Montant prévu (FCFA)</th><th>Méthode</th><th>Durée</th><th style="text-align:right">Dotation/an estimée</th><th>Financement</th><th>Statut</th><th></th></tr></thead>
+        <tbody id="bud-acq-tb"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal saisie budget/acquisition planifiée -->
+<div class="mb" id="m-budget"><div class="modal" style="width:640px">
+  <div class="mh"><h3>Acquisition planifiée</h3><button class="xbtn" onclick="closeM('m-budget')">×</button></div>
+  <div class="mbody">
+    <div class="fg">
+      <div class="fgr"><label>Exercice prévu *</label><input type="number" id="bud-m-yr" placeholder="2026" min="2020" max="2040"></div>
+      <div class="fgr"><label>Catégorie *</label><select id="bud-m-cat"><option value="">— Choisir —</option></select></div>
+      <div class="fgr full"><label>Désignation prévisionnelle *</label><input type="text" id="bud-m-des" placeholder="Ex : Renouvellement parc informatique"></div>
+      <div class="fgr"><label>Montant prévu (FCFA) *</label><input type="number" id="bud-m-vo" placeholder="0" oninput="calcBudgetPreview()"></div>
+      <div class="fgr"><label>Durée amortissement (ans)</label><input type="number" id="bud-m-dur" placeholder="5" min="1" oninput="calcBudgetPreview()"></div>
+      <div class="fgr"><label>Méthode</label><select id="bud-m-meth"><option value="lin">Linéaire</option><option value="deg">Dégressif</option></select></div>
+      <div class="fgr"><label>Financement</label><select id="bud-m-fin"><option>Fonds propres</option><option>Subventions</option><option>Crédit-bail</option></select></div>
+      <div class="fgr"><label>Statut</label><select id="bud-m-st"><option value="planifie">Planifié</option><option value="valide">Validé</option><option value="annule">Annulé</option></select></div>
+      <div class="fgr full"><label>Observations</label><textarea id="bud-m-obs" placeholder="Justification, priorité…" style="height:60px"></textarea></div>
+    </div>
+    <div id="bud-m-preview" style="margin-top:.75rem;padding:.75rem;background:var(--blue-light);border:1px solid #BFDBFE;border-radius:var(--r);font-size:12px;display:none"></div>
+  </div>
+  <div class="mf">
+    <button class="btn" onclick="closeM('m-budget')">Annuler</button>
+    <button class="btn p" onclick="saveBudgetLine()">Enregistrer</button>
+  </div>
+</div></div>
+
+
+<div class="page" id="page-ecritures">
+  <div class="ph"><div><h1>Écritures comptables</h1><p>Journal automatique des immobilisations</p></div>
+  <div class="ph-r">
+    <button class="btn" onclick="exportEc()">Export CSV</button>
+    <button class="btn" onclick="exportEcSage()" title="Format compatible Sage, Ciel, EBP">Export Sage/Ciel</button>
+    <button class="btn" onclick="openCloture()" style="display:flex;align-items:center;gap:5px">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="3" width="11" height="9" rx="1"/><line x1="4" y1="1" x2="4" y2="5"/><line x1="9" y1="1" x2="9" y2="5"/><line x1="1" y1="7" x2="12" y2="7"/></svg>
+      Clôture exercice
+    </button>
+  </div></div>
+
+  <!-- Filtre inline date/période — même style que tableau amortissements -->
+  <div class="card" style="margin-bottom:1rem">
+    <div class="cb">
+      <div class="fg c3" style="align-items:flex-end;gap:1rem">
+
+        <!-- Date d'écriture -->
+        <div class="fgr">
+          <label>Date d'écriture</label>
+          <input type="date" id="ec-arrete" oninput="ecUpdateHint()">
+          <div style="font-size:11px;color:var(--text3);margin-top:4px" id="ec-arrete-hint">Les dotations seront calculées à cette date avec prorata temporis.</div>
+        </div>
+
+        <!-- Filtre Rubrique -->
+        <div class="fgr">
+          <label>Rubrique</label>
+          <select id="ec-flt-rubrique" onchange="ecUpdateSousRubrique(); ecUpdateHint()" style="width:140px;padding:6px 8px;border:1px solid var(--border2);border-radius:var(--r);font-size:12px;font-family:var(--f);background:var(--surface);color:var(--text)">
+            <option value="">Toutes</option>
+          </select>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">Filtre par Catégorie</div>
+        </div>
+
+        <!-- Filtre Sous-rubrique -->
+        <div class="fgr">
+          <label>Sous-rubrique</label>
+          <select id="ec-flt-sousrubrique" onchange="ecUpdateHint()" style="width:140px;padding:6px 8px;border:1px solid var(--border2);border-radius:var(--r);font-size:12px;font-family:var(--f);background:var(--surface);color:var(--text)">
+            <option value="">Toutes</option>
+          </select>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">Filtre par Nature</div>
+        </div>
+
+        <!-- Période optionnelle -->
+        <div class="fgr">
+          <label>Période (optionnel)</label>
+          <div style="display:flex;gap:6px;align-items:center">
+            <input type="date" id="ec-d1" placeholder="Début" oninput="ecUpdateHint()">
+            <span style="color:var(--text3);font-size:12px;white-space:nowrap">→</span>
+            <input type="date" id="ec-d2" placeholder="Fin" oninput="ecUpdateHint()">
+          </div>
+          <div style="font-size:11px;color:var(--text3);margin-top:4px">Si renseignée, filtre les dotations sur la période</div>
+        </div>
+
+        <!-- Boutons -->
+        <div style="display:flex;gap:6px;flex-wrap:wrap">
+          <button class="btn p" onclick="genEc()">
+            <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,10 4,6 7,8 10,3 12,5"/><line x1="1" y1="12" x2="12" y2="12"/></svg>
+            Générer
+          </button>
+          <button class="btn" onclick="ecSetPredefined('fin-annee')" title="31/12 de l'année en cours" style="font-size:11px;padding:6px 10px">Fin d'année</button>
+          <button class="btn" onclick="ecSetPredefined('today')" title="Aujourd'hui" style="font-size:11px;padding:6px 10px">Aujourd'hui</button>
+          <button class="btn" onclick="ecSetPredefined('exercice')" title="Exercice complet" style="font-size:11px;padding:6px 10px">Exercice N</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- Exercices clôturés -->
+  <div id="ec-clotures-wrap" style="display:none;margin-bottom:1rem">
+    <div class="alert w" style="display:flex;align-items:center;justify-content:space-between">
+      <span>⚠ Exercice(s) clôturé(s) — les écritures de ces exercices sont verrouillées.</span>
+      <span id="ec-clotures-list" style="font-size:12px;font-family:var(--m)"></span>
+    </div>
+  </div>
+  <div class="tabs"><div class="tab active" onclick="stab(this,'ec-dot')">Dotations</div><div class="tab" onclick="stab(this,'ec-acq')">Acquisitions</div><div class="tab" onclick="stab(this,'ec-sor')">Cessions & Sorties</div><div class="tab" onclick="stab(this,'ec-der')">Dérogatoires</div></div>
+  <div class="tp active" id="ec-dot"><div class="card"><div class="ch"><h3 id="ec-dot-title">Dotations</h3><span class="badge g">Balancé</span></div><div style="padding:0 1.25rem 1.25rem" id="ec-dot-c"></div></div></div>
+  <div class="tp" id="ec-acq"><div class="card"><div class="ch"><h3>Acquisitions</h3></div><div style="padding:0 1.25rem 1.25rem" id="ec-acq-c"></div></div></div>
+  <div class="tp" id="ec-sor"><div class="card"><div class="ch"><h3>Cessions & sorties</h3></div><div style="padding:0 1.25rem 1.25rem" id="ec-sor-c"></div></div></div>
+  <div class="tp" id="ec-der"><div class="card"><div class="ch"><h3>Amortissements dérogatoires</h3><span class="badge a">Compte 152</span></div><div style="padding:0 1.25rem 1.25rem" id="ec-der-c"><p style="color:var(--text3);font-size:13px;padding:1rem 0">Générez les écritures pour voir les dérogatoires.</p></div></div></div>
+</div>
+
+<!-- Modal clôture exercice -->
+<div class="mb" id="m-cloture"><div class="modal" style="width:480px">
+  <div class="mh"><h3>Clôturer un exercice comptable</h3><button class="xbtn" onclick="closeM('m-cloture')">×</button></div>
+  <div class="mbody">
+    <div class="alert w" style="margin-bottom:1rem">La clôture verrouille définitivement les écritures de cet exercice. Cette action est irréversible.</div>
+    <div class="fg">
+      <div class="fgr full"><label>Exercice à clôturer *</label><input type="number" id="clo-yr" placeholder="Ex : 2024" min="2000" max="2100"></div>
+      <div class="fgr full"><label>Confirmez en saisissant l'année</label><input type="text" id="clo-confirm" placeholder="Tapez l'année pour confirmer..."></div>
+    </div>
+  </div>
+  <div class="mf"><button class="btn" onclick="closeM('m-cloture')">Annuler</button><button class="btn d" onclick="cloturerExercice()">Clôturer définitivement</button></div>
+</div></div>
+
+<!-- ====== RAPPORTS ====== -->
+<div class="page" id="page-rapports">
+  <div class="ph"><div><h1>Rapports & états financiers</h1></div></div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:1rem;margin-bottom:1.25rem">
+    <div class="card rap-card-btn" data-rap="immo" onclick="selectRap('immo',this)"><div class="cb" style="text-align:center;padding:1.25rem"><svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="var(--blue)" stroke-width="1.5" style="margin-bottom:.75rem"><rect x="5" y="5" width="30" height="30" rx="4"/><line x1="12" y1="14" x2="28" y2="14"/><line x1="12" y1="20" x2="22" y2="20"/><line x1="12" y1="26" x2="25" y2="26"/></svg><div style="font-weight:600;font-size:13px;margin-bottom:4px">État des immobilisations</div><div style="font-size:11px;color:var(--text3)">Tableau valorisé complet</div></div></div>
+    <div class="card rap-card-btn" data-rap="amort" onclick="selectRap('amort',this)"><div class="cb" style="text-align:center;padding:1.25rem"><svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="var(--green)" stroke-width="1.5" style="margin-bottom:.75rem"><polyline points="5,32 13,20 20,24 28,12 35,16"/><line x1="5" y1="35" x2="35" y2="35"/></svg><div style="font-weight:600;font-size:13px;margin-bottom:4px">Tableau des amortissements</div><div style="font-size:11px;color:var(--text3)">Dotations par date d'arrêté</div></div></div>
+    <div class="card rap-card-btn" data-rap="vnc" onclick="selectRap('vnc',this)"><div class="cb" style="text-align:center;padding:1.25rem"><svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="var(--amber)" stroke-width="1.5" style="margin-bottom:.75rem"><circle cx="20" cy="20" r="14"/><path d="M20 14v6l4 3"/></svg><div style="font-weight:600;font-size:13px;margin-bottom:4px">VNC par catégorie</div><div style="font-size:11px;color:var(--text3)">Valeurs nettes comptables</div></div></div>
+    <div class="card rap-card-btn" data-rap="syscoa" onclick="selectRap('syscoa',this)"><div class="cb" style="text-align:center;padding:1.25rem"><svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="var(--purple,#7C3AED)" stroke-width="1.5" style="margin-bottom:.75rem"><rect x="4" y="8" width="32" height="24" rx="3"/><line x1="4" y1="16" x2="36" y2="16"/><line x1="14" y1="8" x2="14" y2="32"/></svg><div style="font-weight:600;font-size:13px;margin-bottom:4px">Tableau SYSCOA</div><div style="font-size:11px;color:var(--text3)">Annexe OHADA officielle</div></div></div>
+    <div class="card rap-card-btn" data-rap="derog" onclick="selectRap('derog',this)"><div class="cb" style="text-align:center;padding:1.25rem"><svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="var(--amber)" stroke-width="1.5" style="margin-bottom:.75rem"><path d="M8 32L20 8l12 24H8z"/><line x1="20" y1="18" x2="20" y2="26"/><circle cx="20" cy="29" r="1.5" fill="var(--amber)"/></svg><div style="font-weight:600;font-size:13px;margin-bottom:4px">Amort. dérogatoires</div><div style="font-size:11px;color:var(--text3)">Provisions réglementées</div></div></div>
+    <div class="card rap-card-btn" data-rap="multiyr" onclick="selectRap('multiyr',this)"><div class="cb" style="text-align:center;padding:1.25rem"><svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="var(--blue)" stroke-width="1.5" style="margin-bottom:.75rem"><rect x="4" y="26" width="8" height="10" rx="1"/><rect x="16" y="18" width="8" height="18" rx="1"/><rect x="28" y="10" width="8" height="26" rx="1"/></svg><div style="font-weight:600;font-size:13px;margin-bottom:4px">Comparaison multi-exercices</div><div style="font-size:11px;color:var(--text3)">N-2 à N+2</div></div></div>
+    <div class="card rap-card-btn" data-rap="analytique" onclick="selectRap('analytique',this)"><div class="cb" style="text-align:center;padding:1.25rem"><svg width="34" height="34" viewBox="0 0 40 40" fill="none" stroke="var(--teal,#0891B2)" stroke-width="1.5" style="margin-bottom:.75rem"><circle cx="20" cy="20" r="14"/><path d="M20 20L20 8M20 20L30 26M20 20L10 26"/></svg><div style="font-weight:600;font-size:13px;margin-bottom:4px">Répartition analytique</div><div style="font-size:11px;color:var(--text3)">Par centre de coût</div></div></div>
+  </div>
+  <!-- ── Filtres globaux rapports ── -->
+  <div id="rap-global-filter" style="display:none;margin-bottom:1rem">
+    <div class="card"><div class="cb" style="padding:.85rem 1.25rem">
+      <div style="display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
+        <span style="font-size:12px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;white-space:nowrap">Filtres :</span>
+        <select id="rap-flt-cat" onchange="genRap(_rapCurrentType)" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:12px;font-family:var(--f);background:var(--surface);color:var(--text)">
+          <option value="">Toutes les catégories</option>
+        </select>
+        <select id="rap-flt-st" onchange="genRap(_rapCurrentType)" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:12px;font-family:var(--f);background:var(--surface);color:var(--text)">
+          <option value="">Tous statuts</option>
+          <option value="actif">Actif</option>
+          <option value="amorti">Amorti (VNC=0)</option>
+          <option value="sorti">Inclure sortis</option>
+        </select>
+        <select id="rap-flt-fin" onchange="genRap(_rapCurrentType)" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:12px;font-family:var(--f);background:var(--surface);color:var(--text)">
+          <option value="">Tout financement</option>
+          <option>Fonds propres</option>
+          <option>Subventions</option>
+        </select>
+        <select id="rap-flt-aff" onchange="genRap(_rapCurrentType)" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:12px;font-family:var(--f);background:var(--surface);color:var(--text)">
+          <option value="">Toutes les affectations</option>
+        </select>
+        <button class="btn xs" onclick="resetRapFilters()" style="margin-left:auto;color:var(--text3)">✕ Réinitialiser</button>
+      </div>
+    </div></div>
+  </div>
+
+  <div id="rap-amort-filter" style="display:none;margin-bottom:1rem">
+    <div class="card"><div class="cb"><div class="fg c3" style="align-items:flex-end;gap:1rem">
+      <div class="fgr">
+        <label>Date d'arrêté</label>
+        <input type="date" id="rap-arrete" value="">
+        <div style="font-size:11px;color:var(--text3);margin-top:4px" id="rap-arrete-hint">Les dotations et cumuls seront calculés au prorata jusqu'à cette date.</div>
+      </div>
+      <div class="fgr">
+        <label>Période (optionnel)</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="date" id="rap-period-start" placeholder="Début">
+          <span style="color:var(--text3);font-size:12px;white-space:nowrap">→</span>
+          <input type="date" id="rap-period-end" placeholder="Fin (= date arrêté)">
+        </div>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">Si renseignée, filtre les dotations sur la période</div>
+      </div>
+      <div style="display:flex;gap:6px">
+        <button class="btn p" onclick="genRap('amort')">Actualiser</button>
+        <button class="btn" onclick="setArretePredefined('yr')" title="31/12 de l'année en cours" style="font-size:11px;padding:6px 10px">Fin d'année</button>
+        <button class="btn" onclick="setArretePredefined('today')" title="Aujourd'hui" style="font-size:11px;padding:6px 10px">Aujourd'hui</button>
+      </div>
+    </div></div></div>
+  </div>
+  <div class="card" id="rap-card" style="display:none">
+    <div class="ch" style="position:sticky;top:0;z-index:10;background:var(--surface)">
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+        <h3 id="rap-title">Rapport</h3>
+        <span id="rap-sort-info" style="font-size:11px;color:var(--text3);font-weight:400"></span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <!-- Aggregate toggle -->
+        <div id="rap-agg-wrap" style="display:none;align-items:center;gap:6px">
+          <div class="vt">
+            <button class="vb active" id="rap-view-detail" onclick="setRapView('detail')" title="Vue détaillée" aria-label="Action">>
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="currentColor"><rect x="1" y="1" width="11" height="2"/><rect x="1" y="5" width="11" height="2"/><rect x="1" y="9" width="11" height="2"/></svg>
+            </button>
+            <button class="vb" id="rap-view-agg" onclick="setRapView('agg')" title="Vue agrégée" aria-label="Action">>
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="5" height="5" rx="1"/><rect x="7" y="1" width="5" height="5" rx="1"/><rect x="1" y="7" width="5" height="5" rx="1"/><rect x="7" y="7" width="5" height="5" rx="1"/></svg>
+            </button>
+          </div>
+          <select id="rap-agg-by" onchange="genRap(_rapCurrentType)" style="padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r);font-size:12px;background:var(--surface);color:var(--text)">
+            <option value="categorie">Par catégorie</option>
+            <option value="nature">Par nature</option>
+            <option value="financement">Par financement</option>
+            <option value="affectation">Par affectation</option>
+          </select>
+          <button id="btn-fix-nature" class="btn xs" onclick="fixAllNatures()" title="Recalculer les natures manquantes depuis la catégorie" style="display:none;color:var(--amber);border-color:var(--amber-light);background:var(--amber-light)">
+            ⚠ Recalculer les natures
+          </button>
+        </div>
+        <select id="rap-sort-col" onchange="rapSort()" style="padding:5px 8px;border:1px solid var(--border2);border-radius:var(--r);font-size:12px;background:var(--surface);color:var(--text);display:none">
+          <option value="">Trier par...</option>
+          <option value="code">Code</option>
+          <option value="designation">Désignation</option>
+          <option value="dateAcq">Date d'acquisition</option>
+          <option value="vo">Valeur d'origine</option>
+          <option value="taux">Taux</option>
+          <option value="dot">Dotation</option>
+          <option value="cum">Cumul amort.</option>
+          <option value="vnc">VNC</option>
+        </select>
+        <button class="btn sm" id="rap-sort-dir" onclick="rapSortToggle()" style="display:none;padding:5px 8px" title="Inverser l'ordre">↑↓</button>
+        <button class="btn sm" id="btn-rap-excel" onclick="exportRapExcel()" style="display:flex;align-items:center;gap:5px">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="11" height="11" rx="1.5"/><path d="M3 8l2-5 1.5 4L8 5l2 3"/></svg>
+          Excel
+        </button>
+        <button class="btn sm p" id="btn-rap-pdf" onclick="exportRapPDF()" style="display:flex;align-items:center;gap:5px">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="1" width="11" height="11" rx="1.5"/><line x1="4" y1="4" x2="9" y2="4"/><line x1="4" y1="6.5" x2="9" y2="6.5"/><line x1="4" y1="9" x2="7" y2="9"/></svg>
+          PDF
+        </button>
+      </div>
+    </div>
+    <div id="rap-entete" style="display:none;padding:1.25rem 1.25rem .5rem;border-bottom:1px solid var(--border)"></div>
+    <div class="cb" id="rap-body" style="padding:0;overflow:auto;max-height:calc(100vh - 280px)"></div>
+  </div>
+</div>
+
+<!-- ====== PARAMETRES ====== -->
+<div class="page" id="page-parametres">
+  <div class="ph">
+    <div><h1>Paramètres généraux</h1></div>
+    <div class="ph-r">
+      <button class="btn" onclick="if(confirm('Réinitialiser TOUTES les données ?\nCette action est irréversible.')){localStorage.clear();location.reload();}" style="color:var(--red);border-color:var(--red-light)">Réinitialiser</button>
+      <button class="btn p" onclick="savePrm();saveEntite();toast('Paramètres enregistrés')">Enregistrer tout</button>
+    </div>
+  
+</div>
+  <div class="tabs"><div class="tab active" onclick="stab(this,'prm-cat')">Catégories</div><div class="tab" onclick="stab(this,'prm-cpt')">Plan comptable</div><div class="tab" onclick="stab(this,'prm-meth')">Méthodes</div><div class="tab" onclick="stab(this,'prm-num')">Numérotation</div><div class="tab" onclick="stab(this,'prm-ent')">Entité</div><div class="tab" onclick="stab(this,'prm-axe')">Axes analytiques</div><div class="tab" onclick="stab(this,'prm-cloud')">☁ Synchronisation cloud</div><div class="tab" onclick="stab(this,'prm-sec')" style="color:var(--red,#991B1B)">🔒 Sécurité</div></div>
+  <div class="tp active" id="prm-cat"><div class="card"><div class="ch"><h3>Catégories d'immobilisations</h3><button class="btn p sm" onclick="openCatModal(null)">+ Ajouter</button></div><div class="tw"><table><thead><tr><th>Code</th><th>Libellé</th><th>Durée</th><th>Méthode</th><th>Cpt immo.</th><th>Cpt amort.</th><th>Cpt dot.</th><th></th></tr></thead><tbody id="prm-cat-tb"></tbody></table></div></div></div>
+  <div class="tp" id="prm-cpt"><div class="card"><div class="ch"><h3>Comptes généraux</h3></div><div class="cb">
+    <div class="fg">
+      <div class="fgr"><label>Dotations corporelles</label><input type="text" id="pc6813" value="6813"></div>
+      <div class="fgr"><label>Dotations incorporelles</label><input type="text" id="pc6811" value="6811"></div>
+      <div class="fgr"><label>Dot. complémentaire cession</label><input type="text" id="pc6512" value="6512"></div>
+      <div class="fgr"><label>Produit de cession</label><input type="text" id="pc7512" value="7512"></div>
+      <div class="fgr"><label>Perte mise au rebut</label><input type="text" id="pc6514" value="6514"></div>
+      <div class="fgr"><label>Perte vol / sinistre</label><input type="text" id="pc6516" value="6516"></div>
+      <div class="fgr"><label>Fournisseurs immobilisations</label><input type="text" id="pc4011" value="4011"></div>
+      <div class="fgr"><label>Banque — encaissements</label><input type="text" id="pc5211" value="5211"></div>
+      <div class="fgr"><label>Subventions reçues</label><input type="text" id="pc1411" value="1411"></div>
+      <div class="fgr"><label>Quote-part subvention résultat</label><input type="text" id="pc7412" value="7412"></div>
+    </div>
+  </div></div></div>
+  <div class="tp" id="prm-meth"><div class="card"><div class="ch"><h3>Méthodes et règles de calcul</h3></div><div class="cb">
+    <div class="fg">
+      <div class="fgr"><label>Méthode par défaut</label><select id="pm"><option value="lin">Linéaire</option><option value="deg">Dégressif</option></select></div>
+      <div class="fgr"><label>Calendrier par défaut</label><select id="pcal"><option value="360">Civil — 360 jours</option><option value="365">Financier — 365 jours</option></select></div>
+      <div class="fgr"><label>Devise</label><select id="pdev"><option>FCFA (XOF)</option><option>EUR (€)</option><option>USD ($)</option></select></div>
+      <div class="fgr"><label>Financement par défaut</label><select id="pfin"><option>Fonds propres</option><option>Subventions</option></select></div>
+    </div>
+    <div class="fsec">Coefficients dégressifs</div>
+    <div class="fg c3">
+      <div class="fgr"><label>Durée 3–4 ans</label><input type="number" id="pc1" value="1.5" step=".25"></div>
+      <div class="fgr"><label>Durée 5–6 ans</label><input type="number" id="pc2" value="2.0" step=".25"></div>
+      <div class="fgr"><label>Durée 7+ ans</label><input type="number" id="pc3" value="2.5" step=".25"></div>
+    </div>
+  </div></div></div>
+  <div class="tp" id="prm-num"><div class="card"><div class="ch"><h3>Modèle de codification</h3><button class="btn p sm" onclick="savePrm();toast('Codification enregistrée')">Enregistrer</button></div><div class="cb">
+
+    <!-- Model selector -->
+    <div style="font-size:13px;font-weight:600;margin-bottom:.75rem;color:var(--text)">Choisissez votre modèle de codification</div>
+    <div id="codif-choices" style="display:flex;flex-direction:column;gap:8px;margin-bottom:1.25rem">
+
+      <!-- Option 1 : Charte -->
+      <label style="display:flex;gap:12px;padding:1rem;border:2px solid var(--border);border-radius:var(--rl);cursor:pointer;transition:all .15s" id="opt-charte-wrap">
+        <input type="radio" name="codif-model" id="opt-charte" value="charte" onchange="onCodifModelChange()" style="margin-top:3px;accent-color:var(--blue)">
+        <div style="flex:1">
+          <div style="font-weight:600;margin-bottom:3px">Charte de codage <span style="font-size:11px;background:var(--blue-light);color:var(--blue);padding:1px 7px;border-radius:10px;margin-left:4px">Recommandé</span></div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:6px">N premières lettres de la désignation · marque/modèle · date d'acquisition · numéro séquentiel</div>
+          <code style="font-size:12px" id="prev-charte">ORDI.HP.16/09/25.1</code>
+        </div>
+      </label>
+
+      <!-- Option 2 : Séquentiel -->
+      <label style="display:flex;gap:12px;padding:1rem;border:2px solid var(--border);border-radius:var(--rl);cursor:pointer;transition:all .15s" id="opt-seq-wrap">
+        <input type="radio" name="codif-model" id="opt-seq" value="sequential" onchange="onCodifModelChange()" style="margin-top:3px;accent-color:var(--blue)">
+        <div style="flex:1">
+          <div style="font-weight:600;margin-bottom:3px">Numérotation séquentielle</div>
+          <div style="font-size:12px;color:var(--text2);margin-bottom:6px">Préfixe fixe + année (optionnel) + numéro incrémenté automatiquement</div>
+          <code style="font-size:12px" id="prev-seq">IMM-2025-001</code>
+        </div>
+      </label>
+
+      <!-- Option 3 : Manuel -->
+      <label style="display:flex;gap:12px;padding:1rem;border:2px solid var(--border);border-radius:var(--rl);cursor:pointer;transition:all .15s" id="opt-libre-wrap">
+        <input type="radio" name="codif-model" id="opt-libre" value="libre" onchange="onCodifModelChange()" style="margin-top:3px;accent-color:var(--blue)">
+        <div style="flex:1">
+          <div style="font-weight:600;margin-bottom:3px">Saisie manuelle</div>
+          <div style="font-size:12px;color:var(--text2)">Vous saisissez vous-même chaque code lors de la création d'une fiche. Aucun code n'est généré automatiquement.</div>
+        </div>
+      </label>
+    </div>
+
+    <!-- Config charte -->
+    <div id="cfg-charte" style="display:none;border-top:1px solid var(--border);padding-top:1.25rem">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.06em">Configuration de la charte</div>
+      <div class="fg c3">
+        <div class="fgr"><label>Séparateur</label>
+          <select id="psep" onchange="upvNum()">
+            <option value=".">Point ( . )</option>
+            <option value="/">Barre oblique ( / )</option>
+            <option value="-">Tiret ( - )</option>
+            <option value="_">Underscore ( _ )</option>
+          </select>
+        </div>
+        <div class="fgr"><label>Longueur préfixe désignation</label>
+          <select id="plen" onchange="upvNum()">
+            <option value="4">4 lettres — ORDI</option>
+            <option value="3">3 lettres — ORD</option>
+            <option value="5">5 lettres — ORDIN</option>
+            <option value="6">6 lettres — ORDINA</option>
+          </select>
+        </div>
+        <div class="fgr"><label>Format de la date</label>
+          <select id="pyr" onchange="upvNum()">
+            <option value="ddmmyy">jj/mm/aa — ex : 16/09/25</option>
+            <option value="ddmmyyyy">jj/mm/aaaa — ex : 16/09/2025</option>
+            <option value="none">Sans date</option>
+          </select>
+        </div>
+        <div class="fgr"><label>Prochain numéro séquentiel</label><input type="number" id="pnxt-charte" min="1" oninput="upvNum()"></div>
+        <div class="fgr"><label>Aperçu (Ordinateur · HP · aujourd'hui)</label>
+          <input type="text" id="pprev" readonly style="color:var(--blue);font-family:var(--m);font-weight:600">
+        </div>
+      </div>
+    </div>
+
+    <!-- Config séquentiel -->
+    <div id="cfg-seq" style="display:none;border-top:1px solid var(--border);padding-top:1.25rem">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:.75rem;text-transform:uppercase;letter-spacing:.06em">Configuration séquentielle</div>
+      <div class="fg c3">
+        <div class="fgr"><label>Préfixe</label><input type="text" id="ppfx" placeholder="IMM" oninput="upvNum()"></div>
+        <div class="fgr"><label>Séparateur</label>
+          <select id="psep2" onchange="upvNum()">
+            <option value="-">Tiret ( - )</option>
+            <option value=".">Point ( . )</option>
+            <option value="/">Barre oblique ( / )</option>
+            <option value="_">Underscore ( _ )</option>
+          </select>
+        </div>
+        <div class="fgr"><label>Inclure l'année en cours</label>
+          <select id="pincyr" onchange="upvNum()">
+            <option value="1">Oui — IMM-2025-001</option>
+            <option value="0">Non — IMM-001</option>
+          </select>
+        </div>
+        <div class="fgr"><label>Longueur numéro (zéros)</label>
+          <select id="plennum" onchange="upvNum()">
+            <option value="3">3 chiffres — 001</option>
+            <option value="4">4 chiffres — 0001</option>
+            <option value="2">2 chiffres — 01</option>
+          </select>
+        </div>
+        <div class="fgr"><label>Prochain numéro</label><input type="number" id="pnxt-seq" min="1" oninput="upvNum()"></div>
+        <div class="fgr"><label>Aperçu</label>
+          <input type="text" id="pprev-seq" readonly style="color:var(--blue);font-family:var(--m);font-weight:600">
+        </div>
+      </div>
+    </div>
+
+  </div></div></div>
+  <div class="tp" id="prm-ent"><div class="card"><div class="ch"><h3>Informations de l'entité</h3><button class="btn p sm" onclick="saveEntite();toast('Entité enregistrée')">Enregistrer</button></div><div class="cb">
+    <div class="fg">
+      <div class="fgr"><label>Raison sociale / Nom de l'organisation</label><input type="text" id="prs" placeholder="Ex : Société Nationale XYZ"></div>
+      <div class="fgr"><label>Exercice fiscal</label><select id="pex"><option>Janvier — Décembre</option><option>Juillet — Juin</option></select></div>
+      <div class="fgr"><label>Adresse</label><input type="text" id="padr" placeholder="Rue, Ville, Pays"></div>
+      <div class="fgr"><label>Téléphone</label><input type="text" id="ptel" placeholder="+221 33 xxx xx xx"></div>
+      <div class="fgr"><label>Email de contact</label><input type="email" id="pmail" placeholder="contact@organisation.sn"></div>
+      <div class="fgr"><label>Numéro NINEA </label><input type="text" id="pnin" placeholder="Numéro d'identification fiscale"></div>
+      <div class="fgr full">
+        <label>Logo de l'organisation</label>
+        <div id="logo-drop-zone" style="border:2px dashed var(--border2);border-radius:var(--r);padding:1.25rem;text-align:center;cursor:pointer;background:var(--surface2);transition:border-color .2s,background .2s;position:relative"
+          onclick="document.getElementById('logo-file-inp').click()"
+          ondragover="event.preventDefault();this.style.borderColor='var(--blue)';this.style.background='var(--blue-light)'"
+          ondragleave="this.style.borderColor='var(--border2)';this.style.background='var(--surface2)'"
+          ondrop="handleLogoDrop(event)">
+          <input type="file" id="logo-file-inp" accept="image/*" style="display:none" onchange="handleLogoFile(this.files[0])">
+          <div id="logo-drop-content">
+            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" stroke="var(--text3)" stroke-width="1.5" style="margin-bottom:6px"><rect x="2" y="6" width="24" height="16" rx="2"/><circle cx="9" cy="12" r="2.5"/><path d="M2 18l7-5 5 3.5 4-3 8 5.5"/></svg>
+            <div style="font-size:13px;color:var(--text2);font-weight:500">Cliquer ou déposer une image ici</div>
+            <div style="font-size:11px;color:var(--text3);margin-top:3px">PNG, JPG, SVG — recommandé : fond transparent, max 500 Ko</div>
+          </div>
+          <!-- Aperçu dans la zone de drop -->
+          <div id="logo-drop-preview" style="display:none;flex-direction:column;align-items:center;gap:8px">
+            <img id="logo-img-preview" style="max-height:70px;max-width:260px;object-fit:contain;border-radius:4px" alt="Image">
+            <div style="display:flex;gap:6px;align-items:center">
+              <span id="logo-file-info" style="font-size:11px;color:var(--text3)"></span>
+              <button onclick="event.stopPropagation();clearLogo()" style="padding:2px 8px;font-size:11px;background:var(--red-light);color:var(--red);border:1px solid #F7C1C1;border-radius:4px;cursor:pointer">Supprimer</button>
+            </div>
+          </div>
+        </div>
+        <!-- Champ caché stockant la base64 -->
+        <input type="hidden" id="plogo">
+      </div>
+    </div>
+    <div style="margin-top:1rem;padding:.75rem 1rem;background:var(--surface2);border-radius:var(--r);font-size:12px;color:var(--text2)">
+      Ces informations apparaissent dans l'en-tête des rapports et documents imprimés.
+    </div>
+  </div></div></div>
+
+<div class="tp" id="prm-sec"><div class="card">
+    <div class="ch"><h3>🔒 Sécurité &amp; Sauvegarde</h3></div>
+    <div class="cb">
+
+      <!-- Sauvegarde -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+        <div class="card" style="margin-bottom:0">
+          <div class="ch"><h3>💾 Sauvegarder les données</h3></div>
+          <div class="cb">
+            <p style="font-size:12px;color:var(--text2);margin-bottom:.75rem">Génère un fichier <code>.json</code> complet. Conservez-le sur une clé USB.</p>
+            <div id="backup-status" style="font-size:12px;margin-bottom:.75rem;font-weight:500">—</div>
+            <button class="btn p sm" onclick="backupData()">Télécharger la sauvegarde</button>
+          </div>
+        </div>
+        <div class="card" style="margin-bottom:0">
+          <div class="ch"><h3>♻️ Restaurer</h3></div>
+          <div class="cb">
+            <p style="font-size:12px;color:var(--text2);margin-bottom:.75rem"><strong style="color:var(--red)">Remplace toutes les données</strong> par un fichier de backup.</p>
+            <button class="btn d sm" onclick="restoreData()">Choisir un fichier .json</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Session -->
+      <div class="card" style="margin-bottom:1rem">
+        <div class="ch"><h3>⏱ Session &amp; Protection</h3></div>
+        <div class="cb">
+          <div class="fg c3">
+            <div class="fgr">
+              <label>Déconnexion auto après inactivité</label>
+              <select id="sec-timeout" onchange="updateSessionTimeout()">
+                <option value="15">15 minutes</option>
+                <option value="30" selected>30 minutes</option>
+                <option value="60">1 heure</option>
+                <option value="0">Jamais</option>
+              </select>
+            </div>
+            <div class="fgr">
+              <label>Données localStorage</label>
+              <input type="text" value="Chiffrement XOR activé" readonly style="color:var(--green);font-weight:600">
+            </div>
+            <div class="fgr">
+              <label>Console navigateur (F12)</label>
+              <input type="text" value="Protection activée" readonly style="color:var(--green);font-weight:600">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Générateur de clés -->
+      <div class="card" style="margin-bottom:1rem;border-left:4px solid var(--purple,#5B21B6)">
+        <div class="ch">
+          <h3>🔑 Générateur de clés de licence</h3>
+          <span class="badge" style="background:var(--purple-light,#EDE9FE);color:var(--purple,#5B21B6)">Propriétaire</span>
+        </div>
+        <div class="cb">
+          <div class="fg c3">
+            <div class="fgr"><label>Nom client (sans espaces)</label><input type="text" id="gen-client" placeholder="SNBAZAR" style="text-transform:uppercase"></div>
+            <div class="fgr"><label>Date d'expiration</label><input type="date" id="gen-date"></div>
+            <div class="fgr"><label>Limite (0 = illimitée)</label><input type="number" id="gen-limit" value="0" min="0"></div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;margin-top:.75rem">
+            <button class="btn p sm" onclick="genLicKey()">Générer la clé</button>
+            <input type="text" id="gen-result" readonly style="flex:1;font-family:var(--m,monospace);font-weight:700;color:var(--blue);letter-spacing:.05em;font-size:13px" placeholder="IMMO-CLIENT-DATE-LIMITE-XXXX">
+            <button class="btn sm" onclick="navigator.clipboard.writeText(document.getElementById('gen-result').value).then(()=>toast('Clé copiée !'))">Copier</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Zone dangereuse -->
+      <div class="card" style="border-left:4px solid var(--red)">
+        <div class="ch"><h3 style="color:var(--red)">⚠️ Zone dangereuse</h3></div>
+        <div class="cb" style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
+          <div>
+            <div style="font-size:13px;font-weight:500">Réinitialiser toutes les données</div>
+            <div style="font-size:12px;color:var(--text3);margin-top:4px">Supprime définitivement immobilisations, paramètres et utilisateurs.</div>
+          </div>
+          <button class="btn d sm" style="flex-shrink:0" onclick="if(confirm('ATTENTION !\nSupprime TOUTES les données.\nAvez-vous fait une sauvegarde ?')){localStorage.clear();location.reload();}">
+            Tout réinitialiser
+          </button>
+        </div>
+      </div>
+
+    </div>
+  </div></div>
+</div>
+
+<!-- ====== UTILISATEURS ====== -->
+<div class="page" id="page-utilisateurs">
+  <div class="ph">
+    <div><h1>Utilisateurs & droits d'accès</h1></div>
+    <div class="ph-r">
+      <button class="btn p" onclick="document.getElementById('m-user').dataset.editId='';document.getElementById('m-user-title').textContent='Ajouter un utilisateur';document.getElementById('up').placeholder='••••••••';openM('m-user')">+ Nouvel utilisateur</button>
+      <button class="btn" onclick="openMRole('')">+ Nouveau rôle</button>
+    </div>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:1.5rem;">
+    <div class="card">
+      <div class="ch"><h3>Liste des utilisateurs</h3></div>
+      <div class="tw"><table><thead><tr><th>Utilisateur</th><th>Rôle</th><th>Dernière connexion</th><th>Statut</th><th></th></tr></thead><tbody id="usr-tb"></tbody></table></div>
+    </div>
+    <div class="card">
+      <div class="ch"><h3>Gestion des rôles</h3></div>
+      <div class="tw"><table><thead><tr><th>Rôle</th><th>Code</th><th>Autorisations</th><th></th></tr></thead><tbody id="role-tb"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== JOURNAL D'AUDIT ====== -->
+<div class="page" id="page-journal">
+  <div class="ph">
+    <div>
+      <h1>Journal d'audit</h1>
+      <p id="journal-count" style="font-size:12px;color:var(--text3)">—</p>
+    </div>
+    <div class="ph-r">
+      <button class="btn sm" onclick="exportJournal()" style="gap:5px">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 9v2h9V9M6.5 1v6M4 5l2.5 2.5L9 5"/></svg>
+        Exporter CSV
+      </button>
+      <button class="btn d sm" onclick="clearJournal()">Effacer le journal</button>
+    </div>
+  </div>
+
+  <!-- Filtres -->
+  <div class="card" style="margin-bottom:1rem">
+    <div class="cb" style="display:flex;gap:1rem;align-items:center;flex-wrap:wrap;padding:.75rem 1rem">
+      <span style="font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em">Filtres :</span>
+      <select id="jf-action" onchange="rdJournal()" style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:12px;background:var(--surface);color:var(--text)">
+        <option value="">Toutes les actions</option>
+        <option value="CREATE">Création</option>
+        <option value="UPDATE">Modification</option>
+        <option value="DELETE">Suppression</option>
+        <option value="LOGIN">Connexion</option>
+        <option value="LOGOUT">Déconnexion</option>
+        <option value="EXPORT">Export</option>
+        <option value="PRINT">Impression</option>
+        <option value="IMPORT">Import</option>
+        <option value="RESTORE">Restauration</option>
+      </select>
+      <input type="text" id="jf-user" placeholder="Utilisateur..." oninput="rdJournal()"
+             style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:12px;width:160px">
+      <input type="date" id="jf-date" onchange="rdJournal()"
+             style="padding:6px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:12px">
+      <button class="btn xs" onclick="document.getElementById('jf-action').value='';document.getElementById('jf-user').value='';document.getElementById('jf-date').value='';rdJournal()">&times; Réinitialiser</button>
+    </div>
+  </div>
+
+  <!-- Tableau -->
+  <div class="card">
+    <div class="tw">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:130px">Date &amp; heure</th>
+            <th style="width:110px">Action</th>
+            <th style="width:110px">Entité</th>
+            <th>Détail</th>
+            <th style="width:130px">Utilisateur</th>
+            <th style="width:60px"></th>
+          </tr>
+        </thead>
+        <tbody id="journal-tb">
+          <tr><td colspan="6" style="text-align:center;color:var(--text3);padding:3rem">Chargement...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Axes analytiques -->
+<div class="tp" id="prm-axe">
+  <div class="card"><div class="ch"><h3>Axes analytiques & Centres de coût</h3><button class="btn p sm" onclick="addAxe()">+ Ajouter</button></div>
+    <div class="cb">
+      <p style="font-size:12px;color:var(--text3);margin-bottom:1rem">Définissez vos axes analytiques (département, projet, activité) pour la répartition des dotations.</p>
+      <div id="axe-list" style="display:flex;flex-direction:column;gap:6px"></div>
+      <div style="display:flex;gap:6px;margin-top:.75rem">
+        <input type="text" id="axe-code" placeholder="Code (ex: PROJ-01)" style="flex:1;font-family:var(--m)">
+        <input type="text" id="axe-lib" placeholder="Libellé (ex: Projet Alpha)" style="flex:2">
+        <select id="axe-type" style="flex:1">
+          <option value="departement">Département</option>
+          <option value="projet">Projet</option>
+          <option value="activite">Activité</option>
+          <option value="site">Site</option>
+        </select>
+        <button class="btn p sm" onclick="saveAxe()">Ajouter</button>
+      </div>
+    </div>
+  </div>
+  <!-- Rapport analytique -->
+  <div class="card" style="margin-top:1rem"><div class="ch"><h3>Répartition analytique des dotations</h3><button class="btn sm" onclick="genRapAnalytique()">Calculer</button></div>
+    <div id="axe-rapport" style="padding:.75rem 1.25rem 1.25rem;display:none">
+      <div class="tw"><table><thead><tr><th>Centre de coût</th><th>Axe</th><th>Nb immos</th><th style="text-align:right">V. Origine</th><th style="text-align:right">Dotation N</th><th style="text-align:right">% du total</th></tr></thead><tbody id="axe-rapport-tb"></tbody></table></div>
+    </div>
+  </div>
+</div>
+
+<!-- Synchronisation Cloud -->
+<div class="tp" id="prm-cloud">
+  <div class="card"><div class="ch"><h3>☁ Synchronisation cloud (Supabase)</h3><span class="badge b" id="cloud-status-badge">Non connecté</span></div>
+    <div class="cb">
+      <div class="alert i" style="margin-bottom:1rem">
+        La synchronisation cloud permet de partager votre base de données entre plusieurs postes et utilisateurs en temps réel via <strong>Supabase</strong> (gratuit jusqu'à 500 Mo). Vos données restent privées dans votre propre projet.
+      </div>
+      <div class="fg">
+        <div class="fgr full"><label>URL du projet Supabase *</label><input type="url" id="cloud-url" placeholder="https://xxxxx.supabase.co" style="font-family:var(--m)"></div>
+        <div class="fgr full"><label>Clé API (anon key) *</label><input type="password" id="cloud-key" placeholder="eyJhbGci..." style="font-family:var(--m)"></div>
+        <div class="fgr"><label>Nom de la table</label><input type="text" id="cloud-table" value="immogestion_data" style="font-family:var(--m)"></div>
+        <div class="fgr"><label>Identifiant de la base</label><input type="text" id="cloud-id" placeholder="org_principale" style="font-family:var(--m)"></div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:.75rem;flex-wrap:wrap">
+        <button class="btn p" onclick="cloudConnect()">Tester & Connecter</button>
+        <button class="btn" onclick="cloudPush()" id="btn-cloud-push" style="display:none">⬆ Envoyer vers le cloud</button>
+        <button class="btn" onclick="cloudPull()" id="btn-cloud-pull" style="display:none">⬇ Récupérer depuis le cloud</button>
+        <button class="btn" onclick="cloudSync()" id="btn-cloud-sync" style="display:none">⟳ Synchronisation auto</button>
+        <button class="btn d sm" onclick="cloudDisconnect()" id="btn-cloud-disc" style="display:none">Déconnecter</button>
+      </div>
+      <div id="cloud-log" style="margin-top:1rem;font-size:12px;color:var(--text3);font-family:var(--m);max-height:120px;overflow-y:auto;background:var(--surface2);border-radius:var(--r);padding:.5rem .75rem;display:none"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:1rem"><div class="ch"><h3>Sauvegarde locale</h3></div>
+    <div class="cb" style="display:flex;gap:8px;flex-wrap:wrap">
+      <button class="btn p" onclick="exportBackupJSON()">⬇ Exporter sauvegarde JSON</button>
+      <button class="btn" onclick="importBackupJSON()">⬆ Restaurer sauvegarde JSON</button>
+      <button class="btn" onclick="if(confirm('Réinitialiser TOUTES les données ?\nCette action est irréversible.')){localStorage.clear();location.reload();}" style="color:var(--red);border-color:var(--red-light)">Réinitialiser</button>
+    </div>
+  </div>
+</div>
+
+</div></div></div>
+
+<!-- ====== MODALS ====== -->
+<div class="mb" id="m-new"><div class="modal" style="width:920px">
+  <div class="mh"><h3 id="m-new-title">Nouvelle fiche d'immobilisation</h3><button class="xbtn" onclick="closeM('m-new')">×</button></div>
+  <div class="mbody">
+    <div class="tabs">
+      <div class="tab active" onclick="stab(this,'n-info')">Informations</div>
+      <div class="tab" onclick="stab(this,'n-amort')">Plan d'amortissement</div>
+      <div class="tab" onclick="stab(this,'n-comp')">Composants</div>
+      <div class="tab" onclick="stab(this,'n-rev')">Révision durée</div>
+      <div class="tab" onclick="stab(this,'n-pj')">Pièces jointes</div>
+      <div class="tab" onclick="stab(this,'n-maint')">Garantie & Maintenance</div>
+      <div class="tab" onclick="stab(this,'n-dep')">Dépenses ultérieures</div>
+      <div class="tab" onclick="stab(this,'n-hist')">Historique</div>
+    </div>
+    <div class="tp active" id="n-info">
+    <div class="fsec">Identification</div>
+    <div class="fg c3">
+      <div class="fgr">
+        <label style="display:flex;align-items:center;justify-content:space-between">
+          <span>Code immobilisation</span>
+          <span style="display:flex;align-items:center;gap:6px;font-weight:400">
+            <span id="code-mode-label" style="font-size:11px;color:var(--text3)">Auto</span>
+            <label style="position:relative;display:inline-block;width:32px;height:18px;cursor:pointer">
+              <input type="checkbox" id="code-mode-toggle" onchange="toggleCodeMode()" style="opacity:0;width:0;height:0">
+              <span id="code-mode-track" style="position:absolute;inset:0;background:var(--border2);border-radius:9px;transition:.2s">
+                <span id="code-mode-thumb" style="position:absolute;left:2px;top:2px;width:14px;height:14px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.2)"></span>
+              </span>
+            </label>
+            <span style="font-size:11px;color:var(--text3)">Manuel</span>
+          </span>
+        </label>
+        <input type="text" id="fc0" style="color:var(--blue);font-family:var(--m);font-weight:600" placeholder="Auto-généré à la saisie">
+        <div id="code-auto-hint" style="font-size:11px;color:var(--text3);margin-top:3px">Généré automatiquement depuis la désignation, marque et date</div>
+      </div>
+      <div class="fgr" style="grid-column:span 2"><label>Désignation *</label><input type="text" id="fc1" placeholder="Dénomination complète du bien" oninput="updateCodePreview()"></div>
+      <div class="fgr"><label>Catégorie *</label><select id="fc2" onchange="onCatCh()"><option value="">Choisir une catégorie...</option></select></div>
+      <div class="fgr"><label>Plan comptable</label><select id="fc-syscoa">
+        <option value="">— Sélectionner —</option>
+      </select></div>
+      <div class="fgr"><label>N° inventaire physique</label><input type="text" id="fc-inv-num" placeholder="Ex : ETQ-2024-0042" style="font-family:var(--m)"></div>
+      <div class="fgr" style="display:none"><label>N° série / IMEI / VIN</label><input type="text" id="fc-serie" placeholder="Identifiant constructeur" style="font-family:var(--m)"></div>
+      <div class="fgr"><label>Nature</label><select id="fc-nature"><option value="">— Sélectionner —</option><option>Immobilisations incorporelles</option><option>Terrains</option><option>Bâtiments</option><option>Agencements & installations</option><option>Matériel et outillage</option><option>Matériel de transport</option><option>Mobilier de bureau</option><option>Matériel informatique</option><option>Équipements divers</option><option>Autres immobilisations</option></select></div>
+      <div class="fgr"><label>Marque / Modèle</label><input type="text" id="fc3" placeholder="Ex : Dell PowerEdge R740" oninput="updateCodePreview()"></div>
+      <div class="fgr"><label>Fournisseur</label><input type="text" id="fc4" placeholder="Nom du fournisseur"></div>
+      <div class="fgr"><label>N° facture d'achat</label><input type="text" id="fc-facture" placeholder="Ex : FAC-2024-1234" style="font-family:var(--m)"></div>
+      <div class="fgr" style="grid-column:span 2"><label>Lieu d'affectation</label><input type="text" id="fc5" placeholder="Direction, service, site..."></div>
+      <div class="fgr"><label>Centre de coût / Analytique</label><input type="text" id="fc-cc" placeholder="Ex : PROJ-01 / DIR-FIN" style="font-family:var(--m)" list="cc-list"><datalist id="cc-list"></datalist></div>
+      <div class="fgr"><label>Axe analytique</label><select id="fc-axe"><option value="">— Aucun —</option></select></div>
+      <div class="fgr"><label>Financement *</label><select id="fc6" onchange="togIFRS16()"><option>Fonds propres</option><option>Subventions</option><option>Emprunt</option><option>Crédit-bail</option><option>Don</option></select></div>
+      <div class="fgr"><label>État physique</label><select id="fc-etat">
+        <option value="bon">Bon état</option>
+        <option value="usage">Usagé</option>
+        <option value="degrade">Dégradé</option>
+        <option value="horsservice">Hors service</option>
+      </select></div>
+    </div>
+    <div class="fsec">Valeur & amortissement</div>
+    <div class="fg c3">
+      <div class="fgr"><label>Prix unitaire (FCFA) *</label>
+        <input type="number" id="fc-prix-unit" placeholder="0" oninput="calcVO()">
+      </div>
+      <div class="fgr"><label>Quantité / Unités</label>
+        <input type="number" id="fc-qty" placeholder="1" min="1" value="1" oninput="calcVO()">
+      </div>
+      <div class="fgr"><label>Valeur d'origine totale (FCFA)</label>
+        <input type="number" id="fc7" placeholder="Calculé auto" readonly style="background:var(--surface2);color:var(--blue-mid);font-weight:600" oninput="onVOCh()">
+      </div>
+      <div class="fgr" id="fgr-lot-mode" style="display:none">
+        <label>Mode d'amortissement du lot</label>
+        <select id="fc-lot-mode" onchange="toggleLotMode()">
+          <option value="groupe">Fiche unique — amortissement groupé (1 plan pour les N unités)</option>
+          <option value="individuel">Éclater en fiches individuelles (1 plan par unité)</option>
+        </select>
+      </div>
+      <div class="fgr"><label>Valeur résiduelle (FCFA)</label><input type="number" id="fc-vr" placeholder="0 — laisser vide si nulle" oninput="onVOCh()"></div>
+      <div class="fgr"><label>Date d'acquisition *</label><input type="date" id="fc8" oninput="onVOCh();updateCodePreview()"></div>
+      <div class="fgr"><label>Date de mise en service</label><input type="date" id="fc-mis" title="L'amortissement débute à cette date selon SYSCOA/OHADA. Si vide, = date d'acquisition."></div>
+      <div class="fgr"><label>Méthode éco.</label><select id="fc9" onchange="onVOCh();togUO()">
+        <option value="lin">Linéaire</option>
+        <option value="deg">Dégressif comptable (SYSCOHADA)</option>
+        <option value="degf">Dégressif fiscal (Sénégal — VNC × taux)</option>
+        <option value="uo">Unités d'œuvre</option>
+      </select></div>
+      <div class="fgr"><label>Durée éco. (années) *</label><input type="number" id="fca" placeholder="5" min="1" oninput="onVOCh()"></div>
+      <div class="fgr"><label>Taux éco. calculé</label><input type="text" id="fcb" readonly></div>
+      <div class="fgr"><label>Calendrier</label><select id="fcc2"><option value="360">Civil — 360j</option><option value="365">Financier — 365j</option></select></div>
+    </div>
+    <!-- TVA sur immobilisation -->
+    <div class="fg c3" style="margin-top:.5rem; display:none;">
+      <div class="fgr"><label>Montant TVA (FCFA)</label><input type="number" id="fc-tva" placeholder="0" title="TVA déductible sur l'acquisition"></div>
+      <div class="fgr"><label>Taux TVA (%)</label><input type="number" id="fc-tva-taux" placeholder="18" step="0.1" oninput="calcTVA()"></div>
+      <div class="fgr"><label>Compte TVA</label><input type="text" id="fc-tva-cpt" placeholder="445362" style="font-family:var(--m)" value="445362"></div>
+    </div>
+    <!-- Unités d'œuvre -->
+    <div id="fc-uo-wrap" style="display:none;background:var(--surface2);border:1px solid var(--border2);border-radius:var(--r);padding:.75rem;margin-top:.5rem">
+      <div style="font-size:12px;font-weight:600;color:var(--text2);margin-bottom:.5rem">Amortissement par unités d'œuvre</div>
+      <div class="fg c3">
+        <div class="fgr"><label>Volume total prévu *</label><input type="number" id="fc-uo-total" placeholder="Ex : 200 000 km" oninput="onVOCh()"></div>
+        <div class="fgr"><label>Unité de mesure</label><input type="text" id="fc-uo-unite" placeholder="km, heures, pièces…"></div>
+        <div class="fgr"><label>Volume utilisé à ce jour</label><input type="number" id="fc-uo-cumul" placeholder="0" oninput="onVOCh()"></div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">Dotation = (VO − VR) × volume période / volume total prévu</div>
+    </div>
+    <!-- IFRS 16 — Crédit-bail / Leasing -->
+    <div id="fc-ifrs16-wrap" style="display:none;background:var(--blue-light);border:1px solid #BFDBFE;border-radius:var(--r);padding:.75rem;margin-top:.5rem">
+      <div style="font-size:12px;font-weight:600;color:var(--blue);margin-bottom:.5rem">IFRS 16 — Droit d'utilisation (Crédit-bail / Leasing)</div>
+      <div class="fg c3">
+        <div class="fgr"><label>Valeur actualisée du droit</label><input type="number" id="fc-du" placeholder="Valeur DU à l'origine" oninput="onVOCh()"></div>
+        <div class="fgr"><label>Durée du contrat (mois)</label><input type="number" id="fc-du-dur" placeholder="36" min="1"></div>
+        <div class="fgr"><label>Loyer mensuel (FCFA)</label><input type="number" id="fc-du-loyer" placeholder="0"></div>
+        <div class="fgr"><label>Taux d'actualisation (%)</label><input type="number" id="fc-du-taux" placeholder="Ex : 8.5" step="0.1"></div>
+        <div class="fgr"><label>Bailleur</label><input type="text" id="fc-du-bail" placeholder="Nom du bailleur"></div>
+        <div class="fgr"><label>Option d'achat</label><select id="fc-du-opt"><option value="">Non</option><option value="oui">Oui</option></select></div>
+      </div>
+    </div>
+    <div style="margin-top:.75rem">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:.5rem;cursor:pointer" onclick="togFiscalAmort()">
+        <input type="checkbox" id="fc-fiscal-toggle" style="width:14px;height:14px;accent-color:var(--blue)">
+        <span style="font-size:12px;font-weight:500;color:var(--text2)">Amortissement fiscal distinct (dérogatoire)</span>
+        <span style="font-size:11px;color:var(--text3)">— génère un amortissement dérogatoire</span>
+      </div>
+      <div id="fc-fiscal-wrap" style="display:none;background:var(--amber-light);border:1px solid #FAC775;border-radius:var(--r);padding:.75rem;display:none">
+        <div class="fg c3">
+          <div class="fgr"><label>Méthode fiscale</label><select id="fc-fmeth">
+            <option value="lin">Linéaire</option>
+            <option value="degf">Dégressif fiscal (VNC × taux)</option>
+          </select></div>
+          <div class="fgr"><label>Durée fiscale (années)</label><input type="number" id="fc-fdur" placeholder="Ex : 3" min="1"></div>
+          <div class="fgr"><label>Taux fiscal</label><input type="text" id="fc-ftaux" readonly></div>
+        </div>
+      </div>
+    </div>
+    <div class="fg" style="margin-top:.75rem">
+      <div style="padding:.75rem;background:var(--blue-light);border-radius:var(--r);font-size:12px;border:1px solid #B5D4F4">
+        <div style="font-weight:600;color:var(--blue);margin-bottom:6px">1ère dotation — prorata temporis</div>
+        <div id="f-prev" style="color:var(--blue)">Renseignez la valeur et la date d'acquisition</div>
+      </div>
+      <div style="padding:.75rem;background:var(--surface2);border-radius:var(--r)">
+        <div style="font-size:12px;font-weight:600;margin-bottom:8px">Comptes comptables</div>
+        <div class="fg">
+          <div class="fgr"><label>Compte immo.</label><input type="text" id="fcd" placeholder="Ex: 2414"></div>
+          <div class="fgr"><label>Compte amort.</label><input type="text" id="fce" placeholder="Ex: 2814"></div>
+        </div>
+      </div>
+    </div>
+    </div>
+    <div class="tp" id="n-amort">
+      <div style="padding:.85rem 1rem;background:var(--blue-light);border-radius:var(--r);font-size:12px;border:1px solid var(--border2);margin-bottom:.85rem">
+        <div style="font-weight:600;color:var(--blue);margin-bottom:6px">1ère dotation — prorata temporis</div>
+        <div id="f-prev2" style="color:var(--blue)">Renseignez la valeur et la date d'acquisition</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:.75rem">
+        <button type="button" class="btn p sm" onclick="genPlanPreview()">
+          <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M2 6h12M5.5 2.5v11" stroke-linecap="round"/></svg>
+          Générer le tableau d'amortissement
+        </button>
+        <span id="n-amort-info" style="font-size:11px;color:var(--text3)">Basé sur les valeurs saisies dans l'onglet Informations</span>
+      </div>
+      <div id="n-amort-empty" style="text-align:center;padding:2.5rem 1rem;color:var(--text3)">
+        <svg width="30" height="30" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" style="margin:0 auto .6rem"><rect x="2" y="2.5" width="12" height="11" rx="1.5"/><path d="M2 6h12M5.5 2.5v11" stroke-linecap="round"/></svg>
+        <div style="font-size:13px">Complétez d'abord la valeur d'origine, la durée et la date d'acquisition dans l'onglet Informations, puis cliquez sur « Générer le tableau ».</div>
+      </div>
+      <div id="n-amort-wrap" style="display:none">
+        <div class="tw"><table class="at"><thead><tr><th>Exercice</th><th>V. Début</th><th>Taux</th><th>Dotation</th><th>Cumul</th><th>VNC fin</th></tr></thead><tbody id="n-amtb"></tbody></table></div>
+        <div style="font-size:11px;color:var(--text3);margin-top:.6rem">Ce tableau est un aperçu calculé à partir des champs actuels ; il sera figé et consultable depuis la fiche une fois celle-ci enregistrée.</div>
+      </div>
+    </div>
+    <div class="tp" id="n-comp">
+      <div style="text-align:center;padding:3rem 1rem;color:var(--text3)">
+        <svg width="30" height="30" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" style="margin:0 auto .6rem"><rect x="2" y="7" width="4.2" height="7" rx="1"/><rect x="6.9" y="4" width="4.2" height="10" rx="1"/><rect x="11.8" y="2" width="2.2" height="12" rx="1"/></svg>
+        <div style="font-size:13px">L'approche par composants (IAS 16) sera disponible depuis la fiche, une fois celle-ci enregistrée.</div>
+      </div>
+    </div>
+    <div class="tp" id="n-rev">
+      <div style="text-align:center;padding:3rem 1rem;color:var(--text3)">
+        <svg width="30" height="30" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" style="margin:0 auto .6rem"><path d="M2 8a6 6 0 1 1 1.8 4.3" stroke-linecap="round"/><path d="M2 12v-3h3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div style="font-size:13px">La révision de durée / méthode (IAS 8) se fera depuis la fiche, après l'enregistrement initial.</div>
+      </div>
+    </div>
+    <div class="tp" id="n-pj">
+      <div style="border:2px dashed var(--border2);border-radius:var(--r);padding:1rem;background:var(--surface2)">
+        <div style="display:flex;gap:8px;align-items:center;margin-bottom:.75rem">
+          <button type="button" class="btn sm" onclick="document.getElementById('pj-input').click()">
+            <svg width="12" height="12" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.5 1v8M4 6l2.5 3L9 6"/><rect x="1" y="10" width="11" height="2" rx="1"/></svg>
+            Ajouter un fichier
+          </button>
+          <input type="file" id="pj-input" multiple accept="image/*,.pdf,.xlsx,.xls,.csv,.doc,.docx" style="display:none" onchange="handlePJ(this.files)">
+          <span style="font-size:11px;color:var(--text3)">Images, PDF, Excel, Word — max 1 Mo / fichier</span>
+        </div>
+        <div id="pj-list" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+      </div>
+    </div>
+    <div class="tp" id="n-maint">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div class="card" style="margin:0">
+          <div class="ch"><h3>Garantie constructeur</h3></div>
+          <div class="cb">
+            <div class="fg">
+              <div class="fgr"><label>Date fin de garantie</label><input type="date" id="nm-gar-fin"></div>
+              <div class="fgr"><label>Fournisseur garantie</label><input type="text" id="nm-gar-frs" placeholder="Nom fournisseur"></div>
+              <div class="fgr full"><label>Conditions</label><textarea id="nm-gar-cond" placeholder="Conditions de garantie…" style="height:60px"></textarea></div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin:0">
+          <div class="ch"><h3>Contrat de maintenance</h3></div>
+          <div class="cb">
+            <div class="fg">
+              <div class="fgr"><label>Prestataire</label><input type="text" id="nm-pres" placeholder="Nom du prestataire"></div>
+              <div class="fgr"><label>Coût annuel (FCFA)</label><input type="number" id="nm-cout" placeholder="0"></div>
+              <div class="fgr"><label>Date début contrat</label><input type="date" id="nm-debut"></div>
+              <div class="fgr"><label>Date fin contrat</label><input type="date" id="nm-fin"></div>
+              <div class="fgr"><label>Fréquence</label><select id="nm-freq"><option value="">—</option><option value="mensuelle">Mensuelle</option><option value="trimestrielle">Trimestrielle</option><option value="semestrielle">Semestrielle</option><option value="annuelle">Annuelle</option></select></div>
+              <div class="fgr"><label>N° contrat</label><input type="text" id="nm-num" placeholder="Réf. contrat" style="font-family:var(--m)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:.6rem">Ces informations sont facultatives et seront enregistrées avec la fiche.</div>
+    </div>
+    <div class="tp" id="n-dep">
+      <div style="text-align:center;padding:3rem 1rem;color:var(--text3)">
+        <svg width="30" height="30" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" style="margin:0 auto .6rem"><path d="M8 1.5v13M2.5 8h11" stroke-linecap="round"/></svg>
+        <div style="font-size:13px">Les dépenses ultérieures capitalisables (rénovation, extension…) s'ajoutent depuis la fiche, une fois le bien enregistré.</div>
+      </div>
+    </div>
+    <div class="tp" id="n-hist">
+      <div style="text-align:center;padding:3rem 1rem;color:var(--text3)">
+        <svg width="30" height="30" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" style="margin:0 auto .6rem"><circle cx="8" cy="8" r="6"/><path d="M8 4.5V8l2.5 1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <div style="font-size:13px">L'historique des modifications sera visible ici après la création de la fiche.</div>
+      </div>
+    </div>
+    <input type="hidden" id="f-eid">
+  </div>
+  <div class="mf"><button class="btn" onclick="closeM('m-new')">Annuler</button><button class="btn p" onclick="saveImmo()">Enregistrer la fiche</button></div>
+</div></div>
+
+<div class="mb" id="m-detail"><div class="modal" style="width:860px">
+  <div class="mh"><div><h3 id="det-title">Fiche</h3><div style="font-size:12px;color:var(--text3);margin-top:2px" id="det-sub"></div></div><button class="xbtn" onclick="closeM('m-detail')">×</button></div>
+  <div class="mbody">
+    <div class="tabs">
+      <div class="tab active" onclick="stab(this,'d-info')">Informations</div>
+      <div class="tab" onclick="stab(this,'d-amort')">Plan d'amortissement</div>
+      <div class="tab" onclick="stab(this,'d-composants')">Composants <span class="nbadge" id="det-comp-count" style="display:none;background:var(--blue)"></span></div>
+      <div class="tab" onclick="stab(this,'d-revision')">Révision durée <span class="nbadge" id="det-rev-count" style="display:none;background:var(--amber)"></span></div>
+      <div class="tab" onclick="stab(this,'d-pj')">Pièces jointes <span class="nbadge" id="det-pj-count" style="display:none;background:var(--blue)"></span></div>
+      <div class="tab" onclick="stab(this,'d-maint')">Garantie & Maintenance</div>
+      <div class="tab" onclick="stab(this,'d-dep')">Dépenses ultérieures</div>
+      <div class="tab" onclick="stab(this,'d-hist')">Historique</div>
+    </div>
+    <div class="tp active" id="d-info"><div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:13px" id="det-grid"></div></div>
+    <div class="tp" id="d-amort">
+      <div id="det-comp-banner" style="display:none;padding:.6rem 1rem;background:var(--blue-light);border-radius:var(--r);margin-bottom:.75rem;font-size:12px;color:var(--blue)">
+        ⚙ Plan consolidé — approche par composants (IAS 16) — dotation = somme des composants
+      </div>
+      <div class="tw"><table class="at"><thead><tr><th>Exercice</th><th>V. Début</th><th>Taux</th><th>Dotation consolidée</th><th>Cumul</th><th>VNC fin</th><th id="comp-detail-th" style="display:none;min-width:180px">Détail composants</th></tr></thead><tbody id="det-amtb"></tbody></table></div>
+      <!-- Saisie unités d'œuvre si applicable -->
+      <div id="det-uo-wrap" style="display:none;margin-top:1rem">
+        <div class="ch" style="padding:.75rem 0"><h3>Saisie des unités d'œuvre</h3></div>
+        <div style="display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;margin-bottom:.75rem">
+          <div class="fgr" style="flex:0 0 auto"><label>Exercice</label><input type="number" id="uo-yr" style="width:80px"></div>
+          <div class="fgr" style="flex:0 0 auto"><label id="uo-unite-lbl">Volume période</label><input type="number" id="uo-vol" placeholder="0" style="width:120px"></div>
+          <button class="btn p sm" onclick="saveUOPeriod()">Enregistrer</button>
+        </div>
+        <div class="tw"><table><thead><tr><th>Exercice</th><th style="text-align:right">Volume</th><th style="text-align:right">Dotation calculée</th><th style="text-align:right">% du total prévu</th><th></th></tr></thead><tbody id="uo-hist-tb"></tbody></table></div>
+        <div id="uo-total-info" style="font-size:12px;color:var(--text3);margin-top:6px;text-align:right"></div>
+      </div>
+    </div>
+    <!-- Garantie & Maintenance -->
+    <!-- Approche par composants -->
+    <div class="tp" id="d-composants">
+      <div class="alert i" style="margin-bottom:.75rem">L'approche par composants (IFRS IAS 16) décompose un actif en parties ayant des durées d'utilité différentes. Chaque composant a son propre plan d'amortissement. La somme des VO des composants doit égaler la VO du bien.</div>
+      <div class="card" style="margin:0 0 .75rem">
+        <div class="ch"><h3>Ajouter un composant</h3></div>
+        <div class="cb">
+          <div class="fg c3">
+            <div class="fgr"><label>Désignation du composant *</label><input type="text" id="comp-des" placeholder="Ex : Structure, Toiture, Façade…"></div>
+            <div class="fgr"><label>V. Origine composant (FCFA) *</label><input type="number" id="comp-vo" placeholder="0"></div>
+            <div class="fgr"><label>% de la valeur totale</label><input type="text" id="comp-pct" readonly style="color:var(--text3)"></div>
+            <div class="fgr"><label>Durée (années) *</label><input type="number" id="comp-dur" placeholder="20" min="1" oninput="calcCompTaux()"></div>
+            <div class="fgr"><label>Méthode</label><select id="comp-meth"><option value="lin">Linéaire</option><option value="deg">Dégressif</option></select></div>
+            <div class="fgr"><label>Taux calculé</label><input type="text" id="comp-taux" readonly></div>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:.5rem;align-items:center">
+            <button class="btn p sm" onclick="addComposant()">+ Ajouter le composant</button>
+            <span id="comp-total-info" style="font-size:12px;color:var(--text3)"></span>
+          </div>
+        </div>
+      </div>
+      <div class="tw"><table><thead><tr><th>Désignation</th><th style="text-align:right">V. Origine</th><th style="text-align:right">%</th><th>Méthode</th><th style="text-align:right">Durée</th><th style="text-align:right">Taux</th><th style="text-align:right">Dotation/an</th><th></th></tr></thead><tbody id="comp-tb"></tbody></table></div>
+      <div id="comp-summary" style="margin-top:8px"></div>
+    </div>
+    <!-- Révision de durée IAS 8 -->
+    <div class="tp" id="d-revision">
+      <div class="alert i" style="margin-bottom:.75rem">Conformément à IAS 8 et IFRS, la révision de durée est <strong>prospective</strong> : elle ne modifie pas les dotations passées, seulement les dotations futures à partir de la date de révision.</div>
+      <div class="card" style="margin:0 0 .75rem">
+        <div class="ch"><h3>Réviser la durée / méthode</h3></div>
+        <div class="cb">
+          <div class="fg c3">
+            <div class="fgr"><label>Date de révision *</label><input type="date" id="rev-date"></div>
+            <div class="fgr"><label>Nouvelle durée résiduelle (années) *</label><input type="number" id="rev-dur" placeholder="Ex : 8" min="1" oninput="calcRevision()"></div>
+            <div class="fgr"><label>Nouvelle méthode</label><select id="rev-meth" onchange="calcRevision()"><option value="lin">Linéaire</option><option value="deg">Dégressif</option></select></div>
+            <div class="fgr"><label>Motif de la révision *</label><input type="text" id="rev-motif" placeholder="Changement technologique, obsolescence…"></div>
+          </div>
+          <div id="rev-preview" style="display:none;margin-top:.75rem;padding:.75rem;background:var(--amber-light);border:1px solid #FAC775;border-radius:var(--r);font-size:12px"></div>
+          <div style="display:flex;gap:6px;margin-top:.75rem">
+            <button class="btn p sm" onclick="appliquerRevision()">Appliquer la révision</button>
+            <button class="btn sm" onclick="calcRevision()">Calculer l'impact</button>
+          </div>
+        </div>
+      </div>
+      <!-- Historique des révisions -->
+      <div class="tw"><table><thead><tr><th>Date</th><th>Ancienne durée/méthode</th><th>Nouvelle durée/méthode</th><th>VNC à la révision</th><th>Motif</th><th>Par</th></tr></thead><tbody id="rev-tb"></tbody></table></div>
+    </div>
+    <!-- Pièces jointes -->
+    <div class="tp" id="d-pj">
+      <div style="margin-bottom:.75rem;display:flex;gap:8px;align-items:center">
+        <button class="btn sm" onclick="document.getElementById('pj-det-input').click()">
+          <svg width="12" height="12" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.5 1v8M4 6l2.5 3L9 6"/><rect x="1" y="10" width="11" height="2" rx="1"/></svg>
+          Ajouter
+        </button>
+        <input type="file" id="pj-det-input" multiple accept="image/*,.pdf,.xlsx,.xls,.csv,.doc,.docx" style="display:none" onchange="handlePJDet(this.files)">
+        <span style="font-size:11px;color:var(--text3)">Images, PDF, Excel, Word — max 1 Mo / fichier</span>
+      </div>
+      <div id="det-pj-grid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px"></div>
+    </div>
+    <div class="tp" id="d-maint">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+        <div class="card" style="margin:0">
+          <div class="ch"><h3>Garantie constructeur</h3></div>
+          <div class="cb">
+            <div class="fg">
+              <div class="fgr"><label>Date fin de garantie</label><input type="date" id="maint-gar-fin"></div>
+              <div class="fgr"><label>Fournisseur garantie</label><input type="text" id="maint-gar-frs" placeholder="Nom fournisseur"></div>
+              <div class="fgr full"><label>Conditions</label><textarea id="maint-gar-cond" placeholder="Conditions de garantie…" style="height:60px"></textarea></div>
+            </div>
+          </div>
+        </div>
+        <div class="card" style="margin:0">
+          <div class="ch"><h3>Contrat de maintenance</h3></div>
+          <div class="cb">
+            <div class="fg">
+              <div class="fgr"><label>Prestataire</label><input type="text" id="maint-pres" placeholder="Nom du prestataire"></div>
+              <div class="fgr"><label>Coût annuel (FCFA)</label><input type="number" id="maint-cout" placeholder="0"></div>
+              <div class="fgr"><label>Date début contrat</label><input type="date" id="maint-debut"></div>
+              <div class="fgr"><label>Date fin contrat</label><input type="date" id="maint-fin"></div>
+              <div class="fgr"><label>Fréquence</label><select id="maint-freq"><option value="">—</option><option value="mensuelle">Mensuelle</option><option value="trimestrielle">Trimestrielle</option><option value="semestrielle">Semestrielle</option><option value="annuelle">Annuelle</option></select></div>
+              <div class="fgr"><label>N° contrat</label><input type="text" id="maint-num" placeholder="Réf. contrat" style="font-family:var(--m)"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div id="maint-alert" style="display:none"></div>
+      <div style="text-align:right"><button class="btn p sm" onclick="saveMaintenance()">Enregistrer</button></div>
+    </div>
+    <!-- Dépenses ultérieures capitalisables -->
+    <div class="tp" id="d-dep">
+      <div class="card" style="margin:0 0 1rem">
+        <div class="ch"><h3>Dépenses ultérieures capitalisables</h3><span style="font-size:11px;color:var(--text3)">Augmentent la valeur d'origine et prolongent la durée de vie</span></div>
+        <div class="cb">
+          <div class="fg c3" style="margin-bottom:.75rem">
+            <div class="fgr"><label>Date de la dépense *</label><input type="date" id="dep-date"></div>
+            <div class="fgr"><label>Montant (FCFA) *</label><input type="number" id="dep-mont" placeholder="0"></div>
+            <div class="fgr"><label>Nature des travaux</label><input type="text" id="dep-nat" placeholder="Rénovation, extension…"></div>
+            <div class="fgr"><label>Fournisseur</label><input type="text" id="dep-frs" placeholder="Nom fournisseur"></div>
+            <div class="fgr"><label>N° facture</label><input type="text" id="dep-fac" placeholder="FAC-…" style="font-family:var(--m)"></div>
+            <div class="fgr"><label>Nouvelle durée résiduelle (années)</label><input type="number" id="dep-dur" placeholder="Laisser vide = inchangée" min="1"></div>
+          </div>
+          <button class="btn p sm" onclick="addDepense()">+ Ajouter la dépense</button>
+        </div>
+      </div>
+      <div class="tw"><table><thead><tr><th>Date</th><th>Montant</th><th>Nature</th><th>Fournisseur</th><th>Facture</th><th>Nouvelle durée</th><th></th></tr></thead><tbody id="dep-tb"></tbody></table></div>
+      <div id="dep-total" style="text-align:right;font-size:13px;color:var(--text3);margin-top:6px"></div>
+    </div>
+    <div class="tp" id="d-hist"><div id="det-hist"></div></div>
+  </div>
+  <div class="mf">
+    <button class="btn d" id="btn-det-del" style="margin-right:auto">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,3 12,3"/><path d="M5 3V1h3v2M2 3l1 9h7l1-9"/><line x1="5" y1="6" x2="5" y2="9"/><line x1="8" y1="6" x2="8" y2="9"/></svg>
+      Supprimer
+    </button>
+    <button class="btn d" id="btn-det-sort">Sortie d'actif</button>
+    <button class="btn" onclick="printFiche(curDetId)" style="display:flex;align-items:center;gap:5px">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="5" width="9" height="6" rx="1"/><path d="M4 5V2h5v3"/><rect x="4" y="8" width="5" height="3"/><circle cx="10" cy="7" r=".8" fill="currentColor" stroke="none"/></svg>
+      Imprimer / PDF
+    </button>
+    <button class="btn" id="btn-det-print" style="gap:5px">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="9" height="4" rx="1"/><rect x="1" y="5" width="11" height="6" rx="1"/><rect x="3" y="8" width="7" height="4" rx="1"/></svg>
+      Imprimer
+    </button>
+    <button class="btn" onclick="closeM('m-detail')">Fermer</button>
+    <button class="btn p" id="btn-det-edit">Modifier</button>
+  </div>
+</div></div>
+
+<div class="mb" id="m-sort"><div class="modal">
+  <div class="mh"><h3>Enregistrer une sortie d'actif</h3><button class="xbtn" onclick="closeM('m-sort')">×</button></div>
+  <div class="mbody">
+    <div class="fg">
+      <div class="fgr full">
+        <label>Immobilisation *</label>
+        <div style="position:relative">
+          <input type="text" id="so1-search" placeholder="Rechercher par code, désignation, catégorie..."
+            autocomplete="off"
+            oninput="sortSearchInput()"
+            onfocus="sortSearchOpen()"
+            onkeydown="sortSearchKey(event)"
+            style="width:100%;padding-right:32px">
+          <button onclick="sortSearchClear()" title="Effacer" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;line-height:1;padding:2px">×</button>
+        </div>
+        <div id="so1-dropdown" style="display:none;position:absolute;z-index:2000;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);box-shadow:var(--shadow-md);max-height:240px;overflow-y:auto;width:calc(100% - 3rem);margin-top:2px">
+          <div id="so1-list"></div>
+        </div>
+        <input type="hidden" id="so1">
+        <div id="so1-preview" style="display:none;margin-top:6px;padding:8px 12px;background:var(--blue-light);border:1px solid #BFDBFE;border-radius:var(--r);font-size:12px;color:var(--blue)"></div>
+      </div>
+      <div class="fgr"><label>Motif de sortie *</label><select id="so2" onchange="togSort()"><option value="cession">Cession</option><option value="rebut">Mise au rebut</option><option value="vol">Vol / Sinistre</option></select></div>
+      <div class="fgr"><label>Date de sortie *</label><input type="date" id="so3" oninput="calcSort()"></div>
+      <div class="fgr" id="so-pg"><label>Prix de cession (FCFA)</label><input type="number" id="so4" placeholder="0" oninput="calcSort()"></div>
+      <div class="fgr"><label>Acheteur / Destinataire</label><input type="text" id="so5" placeholder="Nom..."></div>
+      <div class="fgr full"><label>Observations</label><textarea id="so6" placeholder="Précisez les circonstances..."></textarea></div>
+    </div>
+    <div class="divider"></div>
+    <div class="alert i" id="so-info">Sélectionnez une immobilisation pour voir le calcul.</div>
+    <div style="margin-top:1rem;padding:.75rem 1rem;background:var(--amber-light);border:1px solid #FAC775;border-radius:var(--r);display:flex;align-items:center;gap:10px">
+      <input type="checkbox" id="so-pending-flag" style="width:16px;height:16px;accent-color:var(--amber);cursor:pointer">
+      <label for="so-pending-flag" style="font-size:13px;color:var(--amber);cursor:pointer;font-weight:500">Soumettre en attente de validation (ne modifie pas le statut de l'actif tant que non validée)</label>
+    </div>
+  </div>
+    <div class="fgr full" style="margin:.75rem 0">
+    <label>Observations / Commentaires</label>
+    <textarea id="so-obs" rows="3" placeholder="Motif détaillé, références documentaires, observations particulières..." style="width:100%;padding:.6rem .75rem;border:1px solid var(--border2);border-radius:var(--r);font-family:var(--f);font-size:13px;resize:vertical"></textarea>
+  </div>
+  </div>
+  <div class="mf">
+    <button class="btn" style="gap:5px" onclick="printSortie()">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="1" width="9" height="4" rx="1"/><rect x="1" y="5" width="11" height="6" rx="1"/><rect x="3" y="8" width="7" height="4" rx="1"/></svg>
+      Imprimer
+    </button>
+    <button class="btn" onclick="closeM('m-sort')">Annuler</button>
+    <button class="btn p" onclick="saveSort()">Enregistrer la sortie</button>
+  </div>
+</div></div>
+
+<div class="mb" id="m-aff"><div class="modal">
+  <div class="mh"><h3>Nouvelle affectation</h3><button class="xbtn" onclick="closeM('m-aff')">×</button></div>
+  <div class="mbody">
+    <div class="fg">
+      <!-- Champ de recherche immobilisation -->
+      <div class="fgr full">
+        <label>Immobilisation *</label>
+        <div style="position:relative">
+          <input type="text" id="af1-search" placeholder="Rechercher par code, désignation, catégorie..."
+            autocomplete="off"
+            oninput="affSearchInput()"
+            onfocus="affSearchOpen()"
+            onkeydown="affSearchKey(event)"
+            style="width:100%;padding-right:32px">
+          <button onclick="affSearchClear()" title="Effacer" style="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:var(--text3);font-size:16px;line-height:1;padding:2px">×</button>
+        </div>
+        <!-- Dropdown résultats -->
+        <div id="af1-dropdown" style="display:none;position:absolute;z-index:2000;background:var(--surface);border:1px solid var(--border2);border-radius:var(--r);box-shadow:var(--shadow-md);max-height:240px;overflow-y:auto;width:calc(100% - 3rem);margin-top:2px">
+          <div id="af1-list"></div>
+        </div>
+        <!-- Champ caché pour l'ID sélectionné -->
+        <input type="hidden" id="af1">
+        <!-- Aperçu de l'immo sélectionnée -->
+        <div id="af1-preview" style="display:none;margin-top:6px;padding:8px 12px;background:var(--blue-light);border:1px solid #BFDBFE;border-radius:var(--r);font-size:12px;color:var(--blue)"></div>
+      </div>
+      <div class="fgr"><label>Date d'affectation *</label><input type="date" id="af2"></div>
+      <div class="fgr"><label>Affectation actuelle</label><input type="text" id="af3" readonly></div>
+      <div class="fgr full"><label>Nouvelle affectation *</label><input type="text" id="af4" placeholder="Direction, service, site..."></div>
+      <div class="fgr full"><label>Responsable du bien</label><input type="text" id="af5" placeholder="Nom du responsable"></div>
+      <div class="fgr full"><label>Motif du transfert</label><textarea id="af6" placeholder="Raison du changement..."></textarea></div>
+    </div>
+  </div>
+  <div class="mf"><button class="btn" onclick="closeM('m-aff')">Annuler</button><button class="btn p" onclick="saveAff()">Valider</button></div>
+</div></div>
+
+<div class="mb" id="m-genec"><div class="modal" style="width:520px">
+  <div class="mh"><h3>Générer les écritures comptables</h3><button class="xbtn" onclick="closeM('m-genec')">×</button></div>
+  <div class="mbody">
+    <div class="fg">
+      <div class="fgr"><label>Type d'écriture</label><select id="ec-tp"><option value="all">Toutes les écritures</option><option value="dot">Dotations</option><option value="acq">Acquisitions</option><option value="sor">Sorties</option></select></div>
+      <div class="fgr"><label>Mode de date</label>
+        <select id="ec-date-mode" onchange="togEcDateMode()">
+          <option value="yr">Exercice complet</option>
+          <option value="period">Période (du … au …)</option>
+          <option value="date">Date précise</option>
+        </select>
+      </div>
+      <div class="fgr" id="ec-yr-wrap"><label>Exercice</label><input type="number" id="ec-yr" value="2024" min="2000"></div>
+      <div class="fgr" id="ec-period-wrap" style="display:none;grid-column:1/-1">
+        <label>Période</label>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="date" id="ec-d1" style="flex:1">
+          <span style="color:var(--text3);font-size:12px">au</span>
+          <input type="date" id="ec-d2" style="flex:1">
+        </div>
+      </div>
+      <div class="fgr" id="ec-date-wrap" style="display:none"><label>Date précise</label><input type="date" id="ec-dexact"></div>
+    </div>
+    <div class="alert i" style="margin-top:1rem">Les écritures sont générées selon les comptes paramétrés. Vérifiez le plan comptable avant de valider.</div>
+  </div>
+  <div class="mf"><button class="btn" onclick="closeM('m-genec')">Annuler</button><button class="btn p" onclick="genEc()">Générer</button></div>
+</div></div>
+
+<div class="mb" id="m-user"><div class="modal" style="width:560px">
+  <div class="mh"><h3 id="m-user-title">Ajouter un utilisateur</h3><button class="xbtn" onclick="closeM('m-user')">×</button></div>
+  <div class="mbody">
+    <div class="fg">
+      <div class="fgr"><label>Prénom & nom *</label><input type="text" id="un" placeholder="Prénom Nom"></div>
+      <div class="fgr"><label>Email *</label><input type="email" id="ue" placeholder="email@org.sn"></div>
+      <div class="fgr"><label>Rôle *</label><select id="ur"><option value="admin">Administrateur</option><option value="comptable">Comptable</option><option value="gestionnaire">Gestionnaire</option><option value="consultation">Consultation</option></select></div>
+      <div class="fgr"><label>Mot de passe *</label>
+        <div style="display:flex;gap:6px;align-items:center">
+          <input type="password" id="up" placeholder="••••••••" style="flex:1">
+          <button type="button" class="btn sm" onclick="genPassword()" title="Générer un mot de passe aléatoire" style="flex-shrink:0;gap:4px">
+            🎲 Générer
+          </button>
+        </div></div>
+    </div>
+
+  </div>
+  <div class="mf"><button class="btn" onclick="closeM('m-user')">Annuler</button><button class="btn p" onclick="saveUser()">Créer l'utilisateur</button></div>
+</div></div>
+
+<div class="mb" id="m-role"><div class="modal" style="width:480px">
+  <div class="mh"><h3 id="m-role-title">Créer un rôle</h3><button class="xbtn" onclick="closeM('m-role')">&times;</button></div>
+  <div class="mbody">
+    <div class="fg">
+      <div class="fgr"><label>Identifiant (code court) *</label><input type="text" id="m-role-id" placeholder="ex: auditeur"></div>
+      <div class="fgr"><label>Libellé du rôle *</label><input type="text" id="m-role-libelle" placeholder="ex: Auditeur externe"></div>
+      <div class="fgr"><label>Couleur (Badge) *</label><select id="m-role-badge">
+        <option value="gr">Gris (Défaut)</option>
+        <option value="b">Bleu</option>
+        <option value="g">Vert</option>
+        <option value="a">Orange</option>
+        <option value="pu">Violet</option>
+      </select></div>
+    </div>
+    <div class="fsec">Autorisations globales</div>
+    <div style="display:flex;flex-direction:column;gap:8px">
+      <label class="ci"><input type="checkbox" id="m-role-canWrite"> <strong>Écriture</strong> (Ajouter, modifier des fiches)</label>
+      <label class="ci"><input type="checkbox" id="m-role-canDelete"> <strong>Suppression</strong> (Supprimer des fiches)</label>
+      <label class="ci"><input type="checkbox" id="m-role-canValidate"> <strong>Validation</strong> (Valider des affectations/sorties)</label>
+      <label class="ci"><input type="checkbox" id="m-role-canExport"> <strong>Export</strong> (Exporter des données CSV/Excel)</label>
+      <label class="ci"><input type="checkbox" id="m-role-canAdmin"> <strong>Administration</strong> (Paramètres, rôles, utilisateurs)</label>
+    </div>
+  </div>
+  <div class="mf"><button class="btn" onclick="closeM('m-role')">Annuler</button><button class="btn p" onclick="saveRole()">Enregistrer</button></div>
+</div></div>
+
+<div class="mb" id="m-ecdet"><div class="modal" style="width:720px">
+  <div class="mh"><h3 id="ecd-title">Écriture comptable</h3><button class="xbtn" onclick="closeM('m-ecdet')">×</button></div>
+  <div class="mbody" id="ecd-body"></div>
+  <div class="mf"><button class="btn" onclick="closeM('m-ecdet')">Fermer</button></div>
+</div></div>
+
+<!-- Modal: Catégorie -->
+<div class="mb" id="m-cat"><div class="modal" style="width:580px">
+  <div class="mh"><h3 id="m-cat-title">Nouvelle catégorie</h3><button class="xbtn" onclick="closeM('m-cat')">×</button></div>
+  <div class="mbody">
+    <div class="fg">
+      <div class="fgr"><label>Code *</label><input type="text" id="cat-id" placeholder="Ex: INFO2" style="text-transform:uppercase"></div>
+      <div class="fgr"><label>Libellé *</label><input type="text" id="cat-lib" placeholder="Ex: Matériel de bureau"></div>
+      <div class="fgr"><label>Durée par défaut (années)</label><input type="number" id="cat-dur" value="5" min="1"></div>
+      <div class="fgr"><label>Méthode par défaut</label><select id="cat-meth"><option value="lin">Linéaire</option><option value="deg">Dégressif</option></select></div>
+      <div class="fgr"><label>Compte immobilisation</label><input type="text" id="cat-ci" placeholder="Ex: 2414"></div>
+      <div class="fgr"><label>Compte amortissement</label><input type="text" id="cat-ca" placeholder="Ex: 2814"></div>
+      <div class="fgr"><label>Compte dotation</label><input type="text" id="cat-cd" placeholder="Ex: 6813"></div>
+    </div>
+  </div>
+  <div class="mf"><button class="btn" onclick="closeM('m-cat')">Annuler</button><button class="btn p" onclick="saveCat()">Enregistrer</button></div>
+</div></div>
+
+<!-- Modal: Import Excel/CSV -->
+<div class="mb" id="m-import"><div class="modal" style="width:820px">
+  <div class="mh"><h3>Import d'immobilisations — Fichier Excel / CSV</h3><button class="xbtn" onclick="closeM('m-import')">×</button></div>
+  <div class="mbody">
+    <div style="background:var(--blue-light);border:1px solid #BFDBFE;border-radius:var(--r);padding:1rem;margin-bottom:1.25rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:1rem">
+        <div>
+          <div style="font-weight:600;color:var(--blue);margin-bottom:4px">Etape 1 — Téléchargez le modèle CSV</div>
+          <div style="font-size:12px;color:var(--blue);opacity:.85">Remplissez les colonnes sans modifier les en-têtes. Séparateur point-virgule (;). Encodage UTF-8.</div>
+        </div>
+        <button class="btn p sm" onclick="dlTemplate()" style="flex-shrink:0">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.5 1v8M3.5 6l3 3 3-3M1 10h11v2H1z"/></svg>
+          Télécharger modèle
+        </button>
+      </div>
+    </div>
+    <div class="card" style="margin-bottom:1.25rem">
+      <div class="ch"><h3>Colonnes attendues (séparateur ;)</h3><span class="badge b">14 colonnes</span></div>
+      <div class="tw"><table style="font-size:11px">
+        <thead><tr><th>Colonne</th><th>Description</th><th>Requis</th><th>Valeurs acceptées / Exemple</th></tr></thead>
+        <tbody>
+          <tr><td><code>designation</code></td><td>Nom complet du bien</td><td><span class="badge g">Oui</span></td><td>Serveur Dell PowerEdge R740</td></tr>
+          <tr><td><code>categorie</code></td><td>Catégorie</td><td><span class="badge g">Oui</span></td><td>Matériel informatique / Mobilier de bureau / Matériel de transport / Autres matériels / Immobilisations incorporelles</td></tr>
+          <tr><td><code>valeur_origine</code></td><td>Valeur d'achat (FCFA, sans espace)</td><td><span class="badge g">Oui</span></td><td>4500000</td></tr>
+          <tr><td><code>date_acquisition</code></td><td>Format JJ/MM/AAAA</td><td><span class="badge g">Oui</span></td><td>15/03/2024</td></tr>
+          <tr><td><code>duree_amortissement</code></td><td>Durée en années entières</td><td><span class="badge g">Oui</span></td><td>5</td></tr>
+          <tr><td><code>methode</code></td><td>Méthode d'amortissement</td><td><span class="badge a">Défaut: lin</span></td><td>lin (Linéaire) ou deg (Dégressif)</td></tr>
+          <tr><td><code>financement</code></td><td>Source de financement</td><td><span class="badge a">Défaut: Fonds propres</span></td><td>Fonds propres ou Subventions</td></tr>
+          <tr><td><code>fournisseur</code></td><td>Nom du fournisseur</td><td><span class="badge gr">Optionnel</span></td><td>Dell Sénégal</td></tr>
+          <tr><td><code>affectation</code></td><td>Lieu / Service d'affectation</td><td><span class="badge gr">Optionnel</span></td><td>Direction informatique</td></tr>
+          <tr><td><code>nature</code></td><td>Nature ou unité</td><td><span class="badge gr">Optionnel</span></td><td>Unité / Lot / Véhicule</td></tr>
+          <tr><td><code>calendrier</code></td><td>Type de calendrier</td><td><span class="badge a">Défaut: 360</span></td><td>360 (civil) ou 365 (financier)</td></tr>
+          <tr><td><code>compte_immo</code></td><td>Compte immobilisation</td><td><span class="badge gr">Optionnel</span></td><td>2414</td></tr>
+          <tr><td><code>compte_amort</code></td><td>Compte amortissement</td><td><span class="badge gr">Optionnel</span></td><td>2814</td></tr>
+          <tr><td><code>code</code></td><td>Code personnalisé (vide = auto)</td><td><span class="badge gr">Optionnel</span></td><td>IMM-2024-001</td></tr>
+        </tbody>
+      </table></div>
+    </div>
+    <div style="font-weight:600;margin-bottom:.75rem">Etape 2 — Chargez votre fichier CSV</div>
+    <div id="drop-zone" onclick="document.getElementById('file-inp').click()"
+      style="border:2px dashed var(--border2);border-radius:var(--rl);padding:2rem;text-align:center;cursor:pointer;transition:all .2s;background:var(--surface2)"
+      ondragover="event.preventDefault();this.style.borderColor='var(--blue)';this.style.background='var(--blue-light)'"
+      ondragleave="this.style.borderColor='var(--border2)';this.style.background='var(--surface2)'"
+      ondrop="event.preventDefault();this.style.borderColor='var(--border2)';this.style.background='var(--surface2)';handleFileDrop(event.dataTransfer.files[0])">
+      <svg width="36" height="36" viewBox="0 0 36 36" fill="none" stroke="var(--text3)" stroke-width="1.5" style="margin-bottom:.75rem"><path d="M18 24V8M11 15l7-7 7 7"/><rect x="3" y="26" width="30" height="7" rx="2"/></svg>
+      <div style="font-weight:500;margin-bottom:4px">Glissez-déposez votre fichier CSV ici</div>
+      <div style="font-size:12px;color:var(--text3)">ou cliquez pour parcourir — .csv ou .txt (séparateur ;)</div>
+      <input type="file" id="file-inp" accept=".csv,.txt" style="display:none" onchange="handleFileSelect(this.files[0])">
+    </div>
+    <div id="import-preview" style="display:none;margin-top:1.25rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.75rem">
+        <div style="display:flex;align-items:center;gap:8px">
+          <span style="font-weight:600">Aperçu de l'import</span>
+          <span id="import-summary" class="badge b"></span>
+          <span id="import-warn-badge" class="badge a" style="display:none"></span>
+          <span id="import-err-badge" class="badge r" style="display:none"></span>
+        </div>
+        <button class="btn xs d" onclick="resetImport()">Annuler</button>
+      </div>
+      <div id="import-err-list" style="display:none;margin-bottom:.75rem;max-height:120px;overflow-y:auto"></div>
+      <div class="tw" style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:var(--r)">
+        <table style="font-size:11px">
+          <thead><tr><th>#</th><th>Désignation</th><th>Catégorie</th><th>V. Origine</th><th>Date acq.</th><th>Durée</th><th>Méthode</th><th>Financement</th><th>Affectation</th><th>Statut</th></tr></thead>
+          <tbody id="import-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+  <div class="mf">
+    <button class="btn" onclick="closeM('m-import')">Fermer</button>
+    <button class="btn p" id="btn-do-import" style="display:none" onclick="doImport()">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 7l3 3 6-6"/></svg>
+      Confirmer l'import
+    </button>
+  </div>
+</div></div>
+
+
+<script src="app.js"></script>
+
+
+<!-- Modal : Licence ImmoGestion -->
+<div class="mb" id="m-license"><div class="modal" style="width:580px">
+  <div class="mh"><h3>🔑 Licence ImmoGestion</h3><button class="xbtn" onclick="closeM('m-license')">×</button></div>
+  <div class="mbody">
+    <div id="lic-info"></div>
+    <div class="fg">
+      <div class="fgr full">
+        <label>Clé de licence</label>
+        <input type="text" id="lic-key-input" placeholder="IMMO-CLIENT-AAAAMMJJ-LIMITE-XXXX"
+               style="font-family:var(--m,monospace);letter-spacing:.06em;text-transform:uppercase;font-size:13px">
+        <div id="lic-err" style="display:none;color:var(--red,#991B1B);font-size:12px;margin-top:4px"></div>
+      </div>
+      <div class="fgr full" style="font-size:12px;color:var(--text3)">
+        Pour obtenir une clé : contactez <strong>contact@immogestion.sn</strong>
+      </div>
+    </div>
+  </div>
+  <div class="mf">
+    <button class="btn d sm" id="btn-lic-deact" onclick="deactivateLicense()" style="margin-right:auto;display:none">Désactiver</button>
+    <button class="btn" onclick="closeM('m-license')">Fermer</button>
+    <button class="btn p" onclick="activateLicense()">✓ Activer la licence</button>
+  </div>
+</div></div>
+
+
+<!-- Modal : Changement de mot de passe -->
+<div class="mb" id="m-chgpwd"><div class="modal" style="width:460px">
+  <div class="mh">
+    <h3>🔐 Changer le mot de passe</h3>
+    <button class="xbtn" onclick="closeM('m-chgpwd')">×</button>
+  </div>
+  <div class="mbody">
+    <div class="fg">
+      <div class="fgr full">
+        <label>Mot de passe actuel</label>
+        <input type="password" id="pwd-current" placeholder="••••••••" autocomplete="current-password">
+      </div>
+      <div class="fgr full">
+        <label>Nouveau mot de passe</label>
+        <input type="password" id="pwd-new" placeholder="Minimum 6 caractères" autocomplete="new-password">
+      </div>
+      <div class="fgr full">
+        <label>Confirmer le nouveau mot de passe</label>
+        <input type="password" id="pwd-confirm" placeholder="Répéter le nouveau mot de passe" autocomplete="new-password">
+      </div>
+      <div id="pwd-err" style="display:none;color:var(--red);font-size:12px;padding:.5rem .75rem;background:var(--red-light);border-radius:var(--r)"></div>
+    </div>
+  </div>
+  <div class="mf">
+    <button class="btn" onclick="closeM('m-chgpwd')">Annuler</button>
+    <button class="btn p" onclick="doChangePassword()">✓ Changer le mot de passe</button>
+  </div>
+</div></div>
+
+</body>
+</html>

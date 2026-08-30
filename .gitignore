@@ -1,0 +1,5 @@
+# Temporary files
+~$*.docx
+~*.docx
+*.tmp
+.DS_Store
