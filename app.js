@@ -229,7 +229,37 @@ async function doLogin(){
       const err=document.getElementById('login-err');err.textContent='Email et mot de passe requis';err.style.display='block';return;
     }
     
-    // Auth with Supabase
+    // 1. Authentification locale (pour les utilisateurs créés depuis l'interface)
+    const localUser = DB.utilisateurs.find(u => u.email && u.email.toLowerCase() === email && u.statut !== 'inactif');
+    if (localUser && localUser.pwdHash && localUser.salt) {
+      const hash = await sha256(localUser.salt + pwd);
+      if (hash === localUser.pwdHash) {
+        currentUser = {
+          id: localUser.id,
+          nom: localUser.nom,
+          email: localUser.email,
+          role: localUser.role,
+          statut: localUser.statut
+        };
+        localUser.connexion = new Date().toLocaleString('fr-FR');
+        dbSave();
+        
+        document.getElementById('login-page').style.display='none';
+        document.getElementById('app').style.display='flex';
+        document.getElementById('unom').textContent=currentUser.nom;
+        const currRoleObj = (DB.roles||[]).find(r=>r.id===currentUser.role);
+        document.getElementById('urole').textContent=currRoleObj ? currRoleObj.libelle : currentUser.role;
+        document.getElementById('uav').textContent=currentUser.nom.split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2);
+        
+        applyRoleUI();
+        rdDash();
+        nav('dashboard');
+        console.log('Connecté en local !');
+        return;
+      }
+    }
+    
+    // 2. Auth with Supabase (fallback)
     const { data, error } = await supabaseClient.auth.signInWithPassword({
       email: email,
       password: pwd
@@ -269,6 +299,7 @@ async function doLogin(){
     
     applyRoleUI();
     rdDash();
+    nav('dashboard');
     console.log('Connecté via Supabase !');
   } catch(err) {
     console.error('Login error:',err);
@@ -876,23 +907,7 @@ function rdDash(){
   // === 1. Render Header ===
   const saasHero = document.getElementById('saas-hero');
   if(saasHero) {
-    saasHero.innerHTML = `
-      <div class="saas-hero-wrap">
-        <div class="saas-hero-left">
-          <h1>${greet}, ${currentUser?.nom?currentUser.nom.split(' ')[0]:'Administrateur'} 👋</h1>
-          <p>Voici la situation de votre patrimoine au ${todayStr}.</p>
-        </div>
-        <div class="saas-hero-right">
-          <button class="saas-btn-icon" title="Rapports" onclick="nav('rapports',null)">
-            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M4 4h12M4 8h8M4 12h5"/></svg>
-          </button>
-          <button class="saas-btn-primary" data-need-write onclick="if(guardWrite())openNewImmo()">
-            <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v10M3 8h10"/></svg>
-            Nouvelle immobilisation
-          </button>
-        </div>
-      </div>
-    `;
+      saasHero.innerHTML = ``;
     applyRoleUI();
   }
 
@@ -1021,49 +1036,71 @@ function rdDash(){
 
   // === 5. Initialize Chart.js ===
   if(typeof Chart !== 'undefined') {
-    // 5a. Main Chart (12 months VNC projection)
-    const ctxMain = document.getElementById('saasMainChart');
-    if(ctxMain) {
-      if(window.saasChartInst) window.saasChartInst.destroy();
-      
-      const filter = document.getElementById('saas-chart-filter')?.value || 'this_year';
-      const mLabels = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Aoû','Sep','Oct','Nov','Déc'];
-      const mData = mLabels.map((_, i) => tVNC * (1 - (i*0.015)) * (filter==='last_year'?1.05:1));
-      
-      const gradient = ctxMain.getContext('2d').createLinearGradient(0,0,0,300);
-      gradient.addColorStop(0, 'rgba(37, 99, 235, 0.2)');
-      gradient.addColorStop(1, 'rgba(37, 99, 235, 0)');
+    // 5a. Vue d'ensemble (6 KPIs)
+    const ovGrid = document.getElementById('saas-overview-grid');
+    if(ovGrid) {
+      const nbImmos = immos.length;
+      const nwThisMonth = immos.filter(i=>{const d=new Date(i.dateAcq); const n=new Date(); return d.getMonth()===n.getMonth() && d.getFullYear()===n.getFullYear();}).length;
+      const tauxMoy = tVO > 0 ? ((tDot / tVO)*100).toFixed(1) : 0;
+      const vRes = F(tVNC);
 
-      window.saasChartInst = new Chart(ctxMain, {
-        type: 'line',
-        data: {
-          labels: mLabels,
-          datasets: [{
-            label: 'VNC Totale',
-            data: mData,
-            borderColor: '#2563EB',
-            backgroundColor: gradient,
-            borderWidth: 2,
-            fill: true,
-            tension: 0.4,
-            pointBackgroundColor: '#FFFFFF',
-            pointBorderColor: '#2563EB',
-            pointBorderWidth: 2,
-            pointRadius: 4,
-            pointHoverRadius: 6
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          plugins: { legend: { display: false }, tooltip: { mode: 'index', intersect: false } },
-          scales: {
-            x: { grid: { display: false } },
-            y: { grid: { borderDash: [4,4], color: '#E2E8F0' }, beginAtZero: false }
-          },
-          interaction: { mode: 'nearest', axis: 'x', intersect: false }
-        }
-      });
+      const ic1 = '<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 10h16M4 14h16M4 18h16"/></svg>';
+      const ic2 = '<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4"/></svg>';
+      const ic3 = '<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+      const ic4 = '<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/></svg>';
+      const ic5 = '<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>';
+      const ic6 = '<svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>';
+
+      ovGrid.innerHTML = `
+        <div class="saas-overview-kpi">
+          <div class="saas-overview-icon" style="background:#e8f4fd;color:#2563eb">${ic1}</div>
+          <div class="saas-overview-content">
+            <div class="saas-overview-title">Nombre d'immobilisations</div>
+            <div class="saas-overview-val">${nbImmos}</div>
+            <div class="saas-overview-sub">Actifs enregistrés</div>
+          </div>
+        </div>
+        <div class="saas-overview-kpi">
+          <div class="saas-overview-icon" style="background:#ecfdf5;color:#10b981">${ic2}</div>
+          <div class="saas-overview-content">
+            <div class="saas-overview-title">Nouvelles acquisitions</div>
+            <div class="saas-overview-val">${nwThisMonth}</div>
+            <div class="saas-overview-sub">Ce mois</div>
+          </div>
+        </div>
+        <div class="saas-overview-kpi">
+          <div class="saas-overview-icon" style="background:#fef3c7;color:#d97706">${ic3}</div>
+          <div class="saas-overview-content">
+            <div class="saas-overview-title">Immobilisations en cours</div>
+            <div class="saas-overview-val">0</div>
+            <div class="saas-overview-sub">En cours d'acquisition</div>
+          </div>
+        </div>
+        <div class="saas-overview-kpi">
+          <div class="saas-overview-icon" style="background:#fee2e2;color:#ef4444">${ic4}</div>
+          <div class="saas-overview-content">
+            <div class="saas-overview-title">Taux d'amortissement moyen</div>
+            <div class="saas-overview-val">${tauxMoy}%</div>
+            <div class="saas-overview-sub">Du total amortissable</div>
+          </div>
+        </div>
+        <div class="saas-overview-kpi">
+          <div class="saas-overview-icon" style="background:#f3e8ff;color:#9333ea">${ic5}</div>
+          <div class="saas-overview-content">
+            <div class="saas-overview-title">Valeur résiduelle</div>
+            <div class="saas-overview-val">${vRes} <span style="font-size:0.75em;color:var(--text3)">FCFA</span></div>
+            <div class="saas-overview-sub">Valeur nette estimée</div>
+          </div>
+        </div>
+        <div class="saas-overview-kpi">
+          <div class="saas-overview-icon" style="background:#f3f4f6;color:#4b5563">${ic6}</div>
+          <div class="saas-overview-content">
+            <div class="saas-overview-title">Documents associés</div>
+            <div class="saas-overview-val">0</div>
+            <div class="saas-overview-sub">Pièces enregistrées</div>
+          </div>
+        </div>
+      `;
     }
 
     // 5b. Donut Chart
@@ -1076,7 +1113,7 @@ function rdDash(){
         if(!bc[im.categorie])bc[im.categorie]=0;
         bc[im.categorie]+=(im.vo-cumAt(im,TD()));
       });
-      const clrs={'Matériel informatique':'#2563EB','Matériel de transport':'#3B82F6','Mobilier de bureau':'#60A5FA','Immobilisations incorporelles':'#93C5FD','Autres matériels':'#BFDBFE'};
+      const clrs={'Matériel informatique':'#137A47','Matériel de transport':'#F59E0B','Mobilier de bureau':'#8B5CF6','Immobilisations incorporelles':'#10B981','Autres matériels':'#334155'};
       const sorted = Object.entries(bc).sort((a,b)=>b[1]-a[1]);
       const dLabels = sorted.map(x=>x[0]);
       const dData = sorted.map(x=>x[1]);
@@ -2824,11 +2861,11 @@ function genInv(){
     const etatLabel=r.statut==='sorti'?'Sorti':r.vnc<=0?'Amorti':pct>=75?'Presque amorti':'Actif';
     const etatBadge=r.statut==='sorti'?'r':r.vnc<=0?'a':pct>=75?'a':'g';
     return`<tr>
-      <td class="no-trunc"><code class="tc-sm" title="\">\</code></td>
-      <td><span class="tc-lg" title="\">\</span></td>
+      <td class="no-trunc"><code class="tc-sm" title="${escapeHtml(r.code)}">${escapeHtml(r.code)}</code></td>
+      <td><span class="tc-lg" title="${escapeHtml(r.designation)}">${escapeHtml(r.designation)}</span></td>
       <td><span class="tc-xs" title="${r.nature||''}" style="font-size:12px;color:var(--text2)">${r.nature||'—'}</span></td>
       <td class="no-trunc"><span class="badge ${CC(r.categorie)} tc-sm" title="${r.categorie}" style="max-width:110px">${r.categorie}</span></td>
-      <td><span class="tc-sm" title="\" style="font-size:12px">\</span></td>
+      <td><span class="tc-sm" title="${r.affectation||''}" style="font-size:12px">${r.affectation||'—'}</span></td>
       <td class="no-trunc"><span class="badge ${etatBadge}">${etatLabel}</span></td>
       <td class="no-trunc">${FD(r.dateAcq)}</td>
       <td class="n no-trunc">${F(r.vo)}</td>
@@ -2922,10 +2959,10 @@ function restoreInvSituation(id){
     const etatLabel=r.vnc<=0?'Amorti':pct>=75?'Presque amorti':'Actif';
     const etatBadge=r.vnc<=0?'a':pct>=75?'a':'g';
     return`<tr>
-      <td><code>\</code></td><td>\</td>
+      <td><code>${escapeHtml(r.code)}</code></td><td>${escapeHtml(r.designation)}</td>
       <td style="font-size:12px;color:var(--text2)">${r.nature||'—'}</td>
       <td><span class="badge ${CC(r.categorie)}">${r.categorie}</span></td>
-      <td style="font-size:12px">\</td>
+      <td style="font-size:12px">${r.affectation||'—'}</td>
       <td><span class="badge ${etatBadge}">${etatLabel}</span></td>
       <td>${FD(r.dateAcq)}</td>
       <td class="n">${F(r.vo)}</td>

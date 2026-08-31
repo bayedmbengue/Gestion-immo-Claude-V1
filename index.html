@@ -137,58 +137,17 @@
   <!-- Cartes KPI (Rangée de 4) -->
   <div class="saas-kpi-grid" id="saas-kpi-grid"></div>
 
-  <!-- Section principale : Graphes & Tableaux -->
-  <div class="saas-main-grid">
-    <!-- Colonne Principale (Gauche) -->
-    <div class="saas-main-col">
-      <!-- Graphique Principal -->
-      <div class="saas-card">
-        <div class="saas-card-header">
-          <h3>Évolution de la VNC (12 mois)</h3>
-          <select id="saas-chart-filter" onchange="rdDash()">
-            <option value="this_year">Cette année</option>
-            <option value="last_year">L'année dernière</option>
-          </select>
-        </div>
-        <div class="saas-card-body">
-          <canvas id="saasMainChart" style="width: 100%; height: 300px;"></canvas>
-        </div>
-      </div>
-      
-      <!-- Top 5 Tableau -->
-      <div class="saas-card">
-        <div class="saas-card-header">
-          <h3>Dernières immobilisations</h3>
-          <button class="saas-btn-link" onclick="nav('fiches',null)">Voir tout</button>
-        </div>
-        <div class="saas-table-wrap">
-          <table class="saas-table" style="table-layout: fixed; width: 100%;">
-            <thead>
-              <tr>
-                <th style="width: 250px;">Code</th>
-                <th style="width: auto;">Désignation</th>
-                <th style="width: 120px;">V. Origine</th>
-                <th style="width: 120px;">VNC</th>
-                <th style="width: 130px; text-align: right;">Date d'acq.</th>
-              </tr>
-            </thead>
-            <tbody id="saas-recent"></tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-
-    <!-- Colonne Secondaire (Droite) -->
-    <div class="saas-side-col">
-      <!-- Donut Chart -->
-      <div class="saas-card">
+  <!-- Nouvelle disposition (Image 2) -->
+  <div class="saas-new-grid" style="margin-top: 1.5rem;">
+    <!-- Colonne Gauche: Donut -->
+    <div class="saas-new-left">
+      <div class="saas-card" style="height: 100%;">
         <div class="saas-card-header">
           <h3>Répartition par catégorie</h3>
         </div>
-        <div class="saas-card-body" style="display:flex; flex-direction:column; align-items:center; gap:1.5rem;">
-          <div style="width: 100%; max-width: 200px; position: relative;">
+        <div class="saas-card-body" style="display:flex; flex-direction:column; align-items:center; gap:1rem;">
+          <div style="width: 100%; max-width: 160px; position: relative;">
              <canvas id="saasDonutChart"></canvas>
-             <!-- Center label for Donut is managed via JS plugin or absolute div, we will do absolute div -->
              <div id="saas-donut-center" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none;">
                 <div style="font-size: 11px; color: var(--text3); font-weight: 500;">TOTAL VNC</div>
                 <div id="saas-donut-total" style="font-size: 14px; font-weight: 700; color: var(--text);"></div>
@@ -197,14 +156,50 @@
           <div id="saas-donut-legend" style="width: 100%;"></div>
         </div>
       </div>
+    </div>
 
-      <!-- À Surveiller -->
+    <!-- Colonne Droite: Vue d'ensemble (6 KPIs) & Accès rapides -->
+    <div class="saas-new-right" style="display:flex; flex-direction:column; justify-content:space-between; height:100%; gap:1.5rem;">
+      <div class="saas-card" style="flex:1;">
+        <div class="saas-card-header">
+          <h3>Vue d'ensemble</h3>
+        </div>
+        <div class="saas-card-body">
+          <div class="saas-overview-grid" id="saas-overview-grid">
+            <!-- Rempli par JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Accès rapides -->
       <div class="saas-card">
         <div class="saas-card-header">
-          <h3>À surveiller</h3>
-          <button class="saas-btn-link" onclick="nav('sorties',null)">Voir tout</button>
+          <h3>Accès rapides</h3>
         </div>
-        <div class="saas-card-body" id="saas-alert" style="padding: 0;"></div>
+        <div class="saas-card-body" style="padding: 1rem;">
+          <div class="saas-quick-access">
+            <button class="saas-qa-btn" onclick="if(guardWrite())openNewImmo()">
+              <div class="qa-icon" style="background:#e8f4fd;color:#2563eb"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4"/></svg></div>
+              <div class="qa-text">Nouvelle<br>immobilisation</div>
+            </button>
+            <button class="saas-qa-btn" onclick="nav('dotations',null)">
+              <div class="qa-icon" style="background:#fef3c7;color:#d97706"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16m-7 6h7"/></svg></div>
+              <div class="qa-text">Calculer<br>dotation</div>
+            </button>
+            <button class="saas-qa-btn" onclick="nav('rapports',null)">
+              <div class="qa-icon" style="background:#f3f4f6;color:#4b5563"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+              <div class="qa-text">Rapport<br>amortissements</div>
+            </button>
+            <button class="saas-qa-btn" onclick="nav('inventaire',null)">
+              <div class="qa-icon" style="background:#f0fdf4;color:#16a34a"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg></div>
+              <div class="qa-text">Inventaire<br>physique</div>
+            </button>
+            <button class="saas-qa-btn" onclick="nav('sorties',null)">
+              <div class="qa-icon" style="background:#f3e8ff;color:#9333ea"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg></div>
+              <div class="qa-text">Mouvements<br>d'actifs</div>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -232,7 +227,7 @@
     <select id="flt-st" onchange="rdFiches()"><option value="">Tous statuts</option><option value="actif">Actif</option><option value="amorti">Amorti (VNC=0)</option><option value="sorti">Sorti</option></select>
     <select id="flt-fin" onchange="rdFiches()"><option value="">Tout financement</option><option>Fonds propres</option><option>Subventions</option></select>
   </div>
-  <div id="ftv"><div class="card"><div class="tw"><table style="table-layout:fixed;width:100%"><thead><tr>
+  <div id="ftv"><div class="card"><div class="tw"><table><thead><tr>
     <th style="width:36px;text-align:center;color:var(--text3)">#</th>
     <th style="width:140px">Code</th>
     <th style="width:auto">Désignation</th>
@@ -307,14 +302,14 @@
           </button>
         </div>
       </div>
-      <div class="tw"><table class="at" style="table-layout:fixed;width:100%"><thead><tr>
-        <th style="width:140px">Code</th>
-        <th style="width:auto">Désignation</th>
-        <th style="width:80px">Nature</th>
-        <th style="width:120px">Catégorie</th>
-        <th style="width:120px">Lieu d'affectation</th>
-        <th style="width:80px">État</th>
-        <th style="width:100px">Date acq.</th>
+      <div class="tw"><table class="at"><thead><tr>
+        <th style="width:140px;text-align:left">Code</th>
+        <th style="width:auto;text-align:left">Désignation</th>
+        <th style="width:80px;text-align:left">Nature</th>
+        <th style="width:120px;text-align:left">Catégorie</th>
+        <th style="width:120px;text-align:left">Lieu d'affectation</th>
+        <th style="width:80px;text-align:left">État</th>
+        <th style="width:100px;text-align:left">Date acq.</th>
         <th style="width:110px;text-align:right">V. Origine</th>
         <th style="width:110px;text-align:right">Cumul amort.</th>
         <th style="width:110px;text-align:right">VNC à la date</th>
@@ -348,7 +343,7 @@
           <div class="tab" onclick="stab(this,'ic-surplus')">En surplus <span class="nbadge" style="background:var(--amber)" id="ic-nb-surplus"></span></div>
         </div>
         <div class="tp active" id="ic-all">
-          <div class="tw"><table style="table-layout:fixed;width:100%"><thead><tr>
+          <div class="tw"><table><thead><tr>
             <th style="width:32px"></th>
             <th style="width:150px">Code</th>
             <th style="width:100px">N° Inv.</th>
@@ -362,7 +357,7 @@
           </tr></thead><tbody id="ic-tb-all"></tbody></table></div>
         </div>
         <div class="tp" id="ic-missing">
-          <div class="tw"><table style="table-layout:fixed;width:100%"><thead><tr>
+          <div class="tw"><table><thead><tr>
             <th style="width:150px">Code</th>
             <th style="width:100px">N° Inv.</th>
             <th style="width:auto">Désignation</th>
@@ -905,7 +900,7 @@
   
 </div>
   <div class="tabs"><div class="tab active" onclick="stab(this,'prm-cat')">Catégories</div><div class="tab" onclick="stab(this,'prm-cpt')">Plan comptable</div><div class="tab" onclick="stab(this,'prm-meth')">Méthodes</div><div class="tab" onclick="stab(this,'prm-num')">Numérotation</div><div class="tab" onclick="stab(this,'prm-ent')">Entité</div><div class="tab" onclick="stab(this,'prm-axe')">Axes analytiques</div><div class="tab" onclick="stab(this,'prm-cloud')">☁ Synchronisation cloud</div><div class="tab" onclick="stab(this,'prm-sec')" style="color:var(--red,#991B1B)">🔒 Sécurité</div></div>
-  <div class="tp active" id="prm-cat"><div class="card"><div class="ch"><h3>Catégories d'immobilisations</h3><button class="btn p sm" onclick="openCatModal(null)">+ Ajouter</button></div><div class="tw"><table><thead><tr><th>Code</th><th>Libellé</th><th>Durée</th><th>Méthode</th><th>Cpt immo.</th><th>Cpt amort.</th><th>Cpt dot.</th><th></th></tr></thead><tbody id="prm-cat-tb"></tbody></table></div></div></div>
+  <div class="tp active" id="prm-cat"><div class="card"><div class="ch"><h3>Catégories d'immobilisations</h3><button class="btn p sm" onclick="openCatModal(null)">+ Ajouter</button></div><div class="tw"><table style="min-width: 900px"><thead><tr><th>Code</th><th>Libellé</th><th>Durée</th><th>Méthode</th><th>Cpt immo.</th><th>Cpt amort.</th><th>Cpt dot.</th><th></th></tr></thead><tbody id="prm-cat-tb"></tbody></table></div></div></div>
   <div class="tp" id="prm-cpt"><div class="card"><div class="ch"><h3>Comptes généraux</h3></div><div class="cb">
     <div class="fg">
       <div class="fgr"><label>Dotations corporelles</label><input type="text" id="pc6813" value="6813"></div>
