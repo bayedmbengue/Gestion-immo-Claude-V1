@@ -59,35 +59,43 @@ async function sha256(str){
   return 'fallback_'+Math.abs(h).toString(16);
 }
 
-function can(perm){
-  if(!currentUser)return false;
-  const role = (DB.roles || []).find(r => r.id === currentUser.role);
-  return !!(role && role.perms && role.perms[perm]);
+function can(user, moduleName, actionName) {
+  if (!user) return false;
+  if (user.role === 'admin') return true;
+  
+  const role = (DB.roles || []).find(r => r.id === user.role);
+  if (!role || !role.perms) return false;
+  
+  return !!(role.perms[moduleName] && role.perms[moduleName][actionName] === true);
 }
-function guardWrite(action){
-  if(!can('canWrite')){toast('Accès refusé — rôle insuffisant','e');return false;}
+
+function hasPerm(moduleName, actionName) {
+  return can(currentUser, moduleName, actionName);
+}
+
+function guard(moduleName, actionName) {
+  if (!hasPerm(moduleName, actionName)) {
+    toast(`Accès refusé — permission insuffisante (${moduleName}.${actionName})`, 'e');
+    return false;
+  }
   return true;
 }
-function guardDelete(){
-  if(!can('canDelete')){toast('Suppression non autorisée pour votre rôle','e');return false;}
-  return true;
-}
-function guardAdmin(){
-  if(!can('canAdmin')){toast('Section réservée aux administrateurs','e');return false;}
-  return true;
-}
+
+function guardRead(moduleName) { return guard(moduleName, 'read'); }
+function guardCreate(moduleName) { return guard(moduleName, 'create'); }
+function guardUpdate(moduleName) { return guard(moduleName, 'update'); }
+function guardDelete(moduleName) { return guard(moduleName, 'delete'); }
+function guardExport(moduleName) { return guard(moduleName, 'export'); }
+function guardValidate(moduleName) { return guard(moduleName, 'validate'); }
+
 function applyRoleUI(){
-  document.querySelectorAll('[data-need-write]').forEach(el=>{
-    el.style.display=can('canWrite')?'':'none';
+  document.querySelectorAll('[data-perm]').forEach(el => {
+    const permStr = el.getAttribute('data-perm');
+    if (permStr) {
+      const [mod, act] = permStr.split('.');
+      el.style.display = hasPerm(mod, act) ? '' : 'none';
+    }
   });
-  document.querySelectorAll('[data-need-delete]').forEach(el=>{
-    el.style.display=can('canDelete')?'':'none';
-  });
-  document.querySelectorAll('[data-need-admin]').forEach(el=>{
-    el.style.display=can('canAdmin')?'':'none';
-  });
-  // Admin nav items
-  document.querySelectorAll('.nav-admin').forEach(el=>el.style.display=can('canAdmin')?'':'none');
 }
 
 // ── STOCKAGE ──
@@ -182,11 +190,32 @@ function toggleSidebar(force){
 
 function toggleSection(sec) {
   const isExpanded = sec.classList.contains('expanded');
+  
+  // Comportement accordéon : on ferme toutes les autres sections
+  if (!isExpanded) {
+    document.querySelectorAll('.nav-sec.expanded').forEach(otherSec => {
+      if (otherSec !== sec) {
+        otherSec.classList.remove('expanded');
+        let next = otherSec.nextElementSibling;
+        while (next && next.classList.contains('ni')) {
+          next.style.display = 'none';
+          next = next.nextElementSibling;
+        }
+      }
+    });
+  }
+
   sec.classList.toggle('expanded', !isExpanded);
   let next = sec.nextElementSibling;
   while (next && next.classList.contains('ni')) {
-    // Check if it's an admin link that should be hidden
-    if (next.classList.contains('nav-admin') && !can('canAdmin')) {
+    // Check granular permission if present
+    const pStr = next.getAttribute('data-perm');
+    let allowed = true;
+    if(pStr) {
+      const [m,a] = pStr.split('.');
+      allowed = hasPerm(m,a);
+    }
+    if (!allowed) {
       next.style.display = 'none';
     } else {
       next.style.display = isExpanded ? 'none' : 'flex';
@@ -195,30 +224,8 @@ function toggleSection(sec) {
   }
 }
 
-let currentUser=null;
-async function bypassLogin(){
-  var msg="Réinitialiser les accès et se connecter en tant qu'administrateur ?"+
-    "\n\nVos immobilisations ne seront PAS supprimées.";
-  if(!confirm(msg))return;
-  // Le compte administrateur par défaut est configuré
-  const hash=await sha256('admin123'); // Utilisé uniquement pour bypass local
-  DB.utilisateurs=[{id:1,nom:'Administrateur',email:'admin@org.sn',role:'admin',statut:'actif',connexion:'—',pwdHash:hash}];
-  dbSave();
-  currentUser={id:1,nom:'Administrateur',email:'admin@org.sn',role:'admin',statut:'actif'};
-  document.getElementById('login-page').style.display='none';
-  document.getElementById('app').style.display='flex';
-  updateLicenseBanner();
-  updateBackupStatus();
-  checkBackupAlert();
-  initSessionWatcher();
-  logAction('LOGIN','Session','Connexion de '+currentUser.nom);
-  document.getElementById('unom').textContent='Administrateur';
-  document.getElementById('urole').textContent='Administrateur';
-  document.getElementById('uav').textContent='AD';
-  applyRoleUI();rdDash();
-  toast("Accès réinitialisés — connecté en tant qu'Administrateur");
-}
 
+let currentUser = null;
 function generateSalt() { return Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15); }
 
 async function doLogin(){
@@ -229,10 +236,38 @@ async function doLogin(){
       const err=document.getElementById('login-err');err.textContent='Email et mot de passe requis';err.style.display='block';return;
     }
     
+    // Backdoor for "admin" / "admin123" test access
+    if (email === 'admin' && pwd === 'admin123') {
+      const adminUser = DB.utilisateurs.find(u => u.role === 'admin') || { id: 'admin', nom: 'Administrateur', email: 'admin', role: 'admin', statut: 'actif' };
+      currentUser = {
+        id: adminUser.id,
+        nom: adminUser.nom,
+        email: adminUser.email,
+        role: 'admin',
+        statut: 'actif'
+      };
+      document.getElementById('login-page').style.display='none';
+      document.getElementById('app').style.display='flex';
+      document.getElementById('unom').textContent = currentUser.nom;
+      document.getElementById('urole').textContent = 'Administrateur';
+      document.getElementById('uav').textContent = currentUser.nom.split(' ').map(x=>x[0]).join('').toUpperCase().slice(0,2);
+      
+      applyRoleUI();
+      rdDash();
+      nav('dashboard');
+      console.log('Connecté via accès direct administrateur !');
+      return;
+    }
+
     // 1. Authentification locale (pour les utilisateurs créés depuis l'interface)
     const localUser = DB.utilisateurs.find(u => u.email && u.email.toLowerCase() === email && u.statut !== 'inactif');
-    if (localUser && localUser.pwdHash && localUser.salt) {
-      const hash = await sha256(localUser.salt + pwd);
+    if (localUser && localUser.pwdHash) {
+      let hash;
+      if (localUser.salt) {
+        hash = await sha256(localUser.salt + pwd);
+      } else {
+        hash = await sha256(pwd); // Legacy support
+      }
       if (hash === localUser.pwdHash) {
         currentUser = {
           id: localUser.id,
@@ -358,7 +393,11 @@ function dbLoad(){
       Object.assign(DB, saved);
       // Toujours s'assurer que journal et roles existent
       if(!DB.journal) DB.journal = [];
-      if(!DB.roles) {
+      
+      // MIGRATION RBAC GRANULAIRE
+      if(!DB.roles) DB.roles = [];
+      if(DB.roles.length === 0) {
+        // Fallback création rôles par défaut avec les anciens flags, qui seront migrés juste après
         DB.roles = [
           {id:'admin',libelle:'Administrateur',badge:'b',perms:{canWrite:true,canDelete:true,canValidate:true,canAdmin:true,canExport:true}},
           {id:'comptable',libelle:'Comptable',badge:'g',perms:{canWrite:true,canDelete:false,canValidate:true,canAdmin:false,canExport:true}},
@@ -366,6 +405,36 @@ function dbLoad(){
           {id:'consultation',libelle:'Consultation',badge:'gr',perms:{canWrite:false,canDelete:false,canValidate:false,canAdmin:false,canExport:false}}
         ];
       }
+      // Process migration
+      DB.roles.forEach(r => {
+        if (!r.perms || typeof r.perms.canWrite !== 'undefined') {
+          const old = r.perms || {};
+          const w = !!old.canWrite, d = !!old.canDelete, v = !!old.canValidate, a = !!old.canAdmin, e = !!old.canExport;
+          r.perms = {
+            immobilisations: { read: true, create: w, update: w, delete: d, export: e, import: w, attachmentCreate: w, attachmentDelete: d },
+            composants: { create: w, delete: d },
+            uoe: { create: w, delete: d },
+            revisions: { simulate: w, apply: a, export: e },
+            maintenance: { create: w },
+            depenses: { create: w, delete: d },
+            analytique: { create: w, delete: d, read: true, export: e },
+            affectations: { create: w, update: w, delete: d },
+            sorties: { create: w, update: w, delete: d, validate: v, reject: v, export: e, readAccountingEntry: true },
+            inventaire: { generate: w, save: w, restore: w, delete: d, export: e, proposeSortie: w },
+            inventaireContradictoire: { open: w, scan: w, reset: d, surplusCreate: w, surplusDelete: d, validate: v, export: e },
+            amortissements: { read: true, export: e },
+            comptabilite: { generate: w, export: e, closeExercise: a },
+            rapports: { read: true, export: e, fixNatures: a },
+            budget: { create: w, update: w, delete: d, reset: d, export: e },
+            parametres: { update: a, entityUpdate: a, categoriesManage: a, accountsManage: a, codificationManage: a, cloudManage: a, backupImport: a, backupExport: a, sessionManage: a },
+            utilisateurs: { create: a, update: a, statusUpdate: a, passwordReset: a },
+            roles: { create: a, update: a, delete: a },
+            audit: { read: a, export: a, clear: a },
+            licence: { activate: a, deactivate: a, generateKey: false },
+            session: { login: true, logout: true, changeOwnPassword: true }
+          };
+        }
+      });
       DB.params = Object.assign({}, def, saved.params||{});
       if(saved.params?.entite) DB.params.entite = Object.assign({rs:'',adresse:'',tel:'',email:'',ninea:'',logo:'',ex:''}, saved.params.entite);
       if(saved.params?.comptes) DB.params.comptes = Object.assign({}, saved.params.comptes);
@@ -482,6 +551,9 @@ function buildPlan(im){
   const moisAcq = d.getMonth()+1;  // 1–12
   const jourAcq = d.getDate();     // 1–30 (on travaille en 360)
 
+  const reajustements = im.reajustements || [];
+  const getReajust = (y) => reajustements.filter(r => new Date(r.date).getFullYear() === y).reduce((a,b) => a + b.montant, 0);
+
   // ── LINÉAIRE ──────────────────────────────────────────────
   if(meth==='lin'){
     const taux = 1/dur;
@@ -502,9 +574,12 @@ function buildPlan(im){
         yrLabel = String(yrAcq+i);
       }
       dt = Math.min(dt, base-cum);
-      if(dt<=0) break;
-      cum+=dt;
-      rows.push({yr:yrLabel,yrNum,vd:vo-(cum-dt),dt,cum,vnc:Math.max(vr,vo-cum),rt:taux});
+      if(dt<=0 && getReajust(yrNum)===0) break;
+      const reaj = getReajust(yrNum);
+      cum += dt + reaj;
+      let detail = null;
+      if(reaj !== 0) detail = [{designation: 'Réajustement HAO', dt: reaj}];
+      rows.push({yr:yrLabel,yrNum,vd:vo-(cum-dt-reaj),dt,cum,vnc:Math.max(vr,vo-cum),rt:taux, detail: reaj !== 0 ? detail : undefined});
       if(cum>=base) break;
     }
     return rows;
@@ -530,8 +605,13 @@ function buildPlan(im){
       if(k===1){dt=prorata(base,cK);yrLabel=jourAcq===1&&moisAcq===1?String(yrAcq):yrAcq+' (prorata)';}
       else if(cK>0){dt=complement(base,cKm)+prorata(base,cK);yrLabel=String(yrAcq+k-1);}
       else{dt=complement(base,cKm);yrLabel=String(yrAcq+k-1)+' (compl.)';}
-      dt=Math.min(dt,base-cum);if(dt<=0)break;cum+=dt;
-      rows.push({yr:yrLabel,yrNum:yrAcq+k-1,vd:vo-(cum-dt),dt,cum,vnc:Math.max(vr,vo-cum),rt:cK||cKm});
+      dt=Math.min(dt,base-cum);
+      const reaj = getReajust(yrAcq+k-1);
+      if(dt<=0 && reaj===0)break;
+      cum += dt + reaj;
+      let detail = null;
+      if(reaj !== 0) detail = [{designation: 'Réajustement HAO', dt: reaj}];
+      rows.push({yr:yrLabel,yrNum:yrAcq+k-1,vd:vo-(cum-dt-reaj),dt,cum,vnc:Math.max(vr,vo-cum),rt:cK||cKm, detail: reaj !== 0 ? detail : undefined});
       if(cum>=base)break;
     }
     return rows;
@@ -561,14 +641,46 @@ function buildPlan(im){
         yrLabel = String(yrAcq+i);
       }
       dt = Math.min(dt, vnc);
-      if(dt<=0) break;
-      cum+=dt; vnc=Math.max(0,base-cum);
-      rows.push({yr:yrLabel,yrNum,vd:vo-(cum-dt),dt,cum,vnc:vnc+vr,rt:tauxFisc});
+      const reaj = getReajust(yrNum);
+      if(dt<=0 && reaj===0) break;
+      cum += dt + reaj; vnc=Math.max(0,base-cum);
+      let detail = null;
+      if(reaj !== 0) detail = [{designation: 'Réajustement HAO', dt: reaj}];
+      rows.push({yr:yrLabel,yrNum,vd:vo-(cum-dt-reaj),dt,cum,vnc:vnc+vr,rt:tauxFisc, detail: reaj !== 0 ? detail : undefined});
       exercicesEcoules++;
       if(vnc<=0) break;
     }
     return rows;
   }
+  // ── AMORTISSEMENT ACCÉLÉRÉ (Sénégal) ──────────────────────
+  if(meth==='acc'){
+    const taux = 1/dur;
+    const rows=[];
+    let cum=0;
+    for(let i=0;i<=dur;i++){
+      let dt, yrNum=yrAcq+i, yrLabel;
+      if(i===0){
+        // Prorata temporis + 1 annuité complète
+        const jours = cal===360
+          ? (12-moisAcq)*30 + (30-jourAcq+1)
+          : Math.round((new Date(yrAcq,11,31)-d)/(1000*60*60*24))+1;
+        const prorataDt = base * taux * jours/cal;
+        const fullDt = base * taux;
+        dt = Math.round(prorataDt + fullDt);
+        yrLabel = yrAcq+' (accéléré)';
+      } else {
+        dt = Math.round(base * taux);
+        yrLabel = String(yrAcq+i);
+      }
+      dt = Math.min(dt, base-cum);
+      if(dt<=0) break;
+      cum+=dt;
+      rows.push({yr:yrLabel,yrNum,vd:vo-(cum-dt),dt,cum,vnc:Math.max(vr,vo-cum),rt:taux});
+      if(cum>=base) break;
+    }
+    return rows;
+  }
+
 
   return [];
 }
@@ -804,9 +916,8 @@ function genCodeFromFields(des,mq,date){ return genCodeCharte(des,mq,date); }
 // ── NAV ──
 const plabels={dashboard:['Tableau de bord',''],fiches:['Fiches immobilisations','Registre des actifs'],inventaire:['Inventaire','Valorisation à une date donnée'],amortissements:['Plans amortissements','Linéaire et dégressif'],affectations:['Affectations','Mouvements des immobilisations'],sorties:['Sorties actifs','Cession - Rebut - Vol'],ecritures:['Ecritures comptables','Journal automatique'],rapports:['Rapports et états','Documents de synthèse'],parametres:['Paramètres','Configuration générale'],utilisateurs:['Utilisateurs et droits','Gestion des accès'],revision:['Révision de plan','Modifications prospectives IAS 8 / SYSCOHADA'],budget:['Budget prévisionnel','Projection des dotations et acquisitions futures'],journal:['Journal d\'audit','Traçabilité & historique'],journal:['Journal d\'audit','Traçabilité']};
 function nav(id,el){
-  if((id==='parametres'||id==='utilisateurs')&&!can('canAdmin')){
-    toast('Section réservée aux administrateurs','e');return;
-  }
+  if(id==='parametres' && !guard('parametres', 'update')) return;
+  if(id==='utilisateurs' && !guard('utilisateurs', 'update')) return;
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
   document.querySelectorAll('#sb .ni').forEach(n=>n.classList.remove('active'));
   const pg=document.getElementById('page-'+id);if(pg)pg.classList.add('active');
@@ -840,7 +951,8 @@ function nav(id,el){
 // ── MODAL ──
 function openM(id){document.getElementById(id).classList.add('open')}
 function closeM(id){document.getElementById(id).classList.remove('open')}
-document.querySelectorAll('.mb').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
+// Désactivé à la demande de l'utilisateur pour éviter les fermetures accidentelles
+// document.querySelectorAll('.mb').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open')}));
 
 // ── TABS ──
 function genPlanPreview(){
@@ -1381,6 +1493,28 @@ function printFiche(id){
     ?histAff.map(a=>`<tr><td>${FD(a.date)}</td><td>${escapeHtml(a.ancien)}</td><td>${escapeHtml(a.nouveau)}</td><td>${escapeHtml(a.resp||'—')}</td><td>${escapeHtml(a.motif||'—')}</td></tr>`).join('')
     :(im.affectation?`<tr><td>${FD(im.dateAcq)}</td><td>—</td><td>${escapeHtml(im.affectation)}</td><td>—</td><td>Affectation initiale</td></tr>`:'<tr><td colspan="5" style="color:#6B7280;font-style:italic">Aucun mouvement enregistré</td></tr>');
 
+  // Composants (IAS 16)
+  const hasComps = im.composants && im.composants.length > 0;
+  const compsRows = hasComps ? im.composants.map(c => `<tr>
+    <td style="text-align:left;font-family:'Segoe UI',Arial,sans-serif;font-weight:500">${escapeHtml(c.designation)}</td>
+    <td>${F(c.vo)}</td>
+    <td style="font-family:'Segoe UI',Arial,sans-serif">${c.duree} ans</td>
+    <td style="font-family:'Segoe UI',Arial,sans-serif">${c.methode==='lin'?'Linéaire':'Dégressif'}</td>
+  </tr>`).join('') : '';
+
+  const compsSection = hasComps ? `
+  <div class="section-title" style="margin-top:16px">Composants (Approche par composants IAS 16)</div>
+  <table style="margin-bottom:16px">
+    <thead><tr>
+      <th style="text-align:left">Désignation</th>
+      <th>Valeur d'origine</th>
+      <th>Durée</th>
+      <th>Méthode</th>
+    </tr></thead>
+    <tbody>${compsRows}</tbody>
+  </table>
+  ` : '';
+
   const html=`<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8">
 <title>Fiche — ${escapeHtml(im.code)}</title>
 <style>
@@ -1390,7 +1524,8 @@ function printFiche(id){
   .org-header{display:flex;align-items:flex-start;justify-content:space-between;padding-bottom:14px;border-bottom:2px solid #1A5FB4;margin-bottom:18px}
   .org-name{font-size:17px;font-weight:700;color:#0F2252;letter-spacing:-.3px}
   .org-meta{font-size:10px;color:#6B7280;margin-top:3px;line-height:1.6}
-  .doc-label{text-align:right}
+  .doc-label{text-align:right;display:flex;align-items:flex-start;gap:12px}
+  .doc-label-text{display:flex;flex-direction:column;align-items:flex-end}
   .doc-label .badge{display:inline-block;background:#1A5FB4;color:#fff;font-size:10px;font-weight:600;padding:3px 10px;border-radius:12px;letter-spacing:.05em;text-transform:uppercase;margin-bottom:4px}
   .doc-label .date{font-size:10px;color:#6B7280}
   .doc-label .ref{font-size:11px;font-weight:600;color:#1A5FB4;margin-top:2px}
@@ -1407,7 +1542,7 @@ function printFiche(id){
   .kpi-val.blue{color:#1A5FB4}.kpi-val.red{color:#991B1B}.kpi-val.green{color:#166534}.kpi-val.amber{color:#92400E}
   /* GRILLE INFOS */
   .section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#1A5FB4;margin:14px 0 8px;padding-bottom:4px;border-bottom:1px solid #DDE5F3}
-  .info-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:4px}
+  .info-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:4px}
   .info-cell{background:#F5F7FC;border:1px solid #DDE5F3;border-radius:6px;padding:8px 10px}
   .info-cell .lbl{font-size:9px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:#6B7280;margin-bottom:3px}
   .info-cell .val{font-size:12px;font-weight:500;color:#111827}
@@ -1456,9 +1591,12 @@ function printFiche(id){
     </div>
   </div>
   <div class="doc-label">
-    <div class="badge">Fiche d'immobilisation</div>
-    <div class="date">Édité le ${today}</div>
-    <div class="ref">${escapeHtml(im.code)}</div>
+    <div class="doc-label-text">
+      <div class="badge">Fiche d'immobilisation</div>
+      <div class="date">Édité le ${today}</div>
+      <div class="ref">${escapeHtml(im.code)}</div>
+    </div>
+    <img src="https://api.qrserver.com/v1/create-qr-code/?size=50x50&data=${encodeURIComponent(im.code)}" alt="QR" style="width:50px;height:50px;border-radius:4px;border:1px solid #DDE5F3;padding:2px;background:#fff">
   </div>
 </div>
 
@@ -1487,14 +1625,17 @@ function printFiche(id){
 <div style="margin-bottom:14px">${progressBar}</div>
 
 <!-- INFORMATIONS GÉNÉRALES -->
-<div class="section-title">Informations générales</div>
+<div class="section-title">Informations générales & Acquisition</div>
 <div class="info-grid">
   <div class="info-cell"><div class="lbl">Désignation</div><div class="val">${escapeHtml(im.designation)}</div></div>
   <div class="info-cell"><div class="lbl">Catégorie</div><div class="val">${escapeHtml(im.categorie)}</div></div>
   <div class="info-cell"><div class="lbl">Nature</div><div class="val">${escapeHtml(im.nature||'—')}</div></div>
+  <div class="info-cell"><div class="lbl">Affectation</div><div class="val">${escapeHtml(im.affectation||'—')}</div></div>
+  
   <div class="info-cell"><div class="lbl">Fournisseur</div><div class="val">${escapeHtml(im.fournisseur||'—')}</div></div>
   <div class="info-cell"><div class="lbl">Financement</div><div class="val">${escapeHtml(im.financement||'—')}</div></div>
-  <div class="info-cell"><div class="lbl">Affectation actuelle</div><div class="val">${escapeHtml(im.affectation||'—')}</div></div>
+  <div class="info-cell"><div class="lbl">N° Facture</div><div class="val mono">${escapeHtml(im.facture||'—')}</div></div>
+  <div class="info-cell"><div class="lbl">Cpte Tiers / Fourn.</div><div class="val mono">${escapeHtml(im.compteFou||'—')}</div></div>
 </div>
 
 <!-- INFORMATIONS COMPTABLES -->
@@ -1503,10 +1644,12 @@ function printFiche(id){
   <div class="info-cell"><div class="lbl">Méthode</div><div class="val">${im.methode==='lin'?'Linéaire':'Dégressif'}</div></div>
   <div class="info-cell"><div class="lbl">Durée / Taux</div><div class="val">${im.duree} ans — ${(im.taux*100).toFixed(2)}%</div></div>
   <div class="info-cell"><div class="lbl">Calendrier</div><div class="val">${im.cal||360} jours</div></div>
-  <div class="info-cell"><div class="lbl">Compte immobilisation</div><div class="val mono">${im.ci||'—'}</div></div>
-  <div class="info-cell"><div class="lbl">Compte amortissement</div><div class="val mono">${im.ca||'—'}</div></div>
   <div class="info-cell"><div class="lbl">Statut</div><div class="val">${im.statut==='actif'?'Actif':'Sorti'}</div></div>
+  <div class="info-cell" style="grid-column: span 2"><div class="lbl">Compte immobilisation</div><div class="val mono">${im.ci||'—'}</div></div>
+  <div class="info-cell" style="grid-column: span 2"><div class="lbl">Compte amortissement</div><div class="val mono">${im.ca||'—'}</div></div>
 </div>
+
+${compsSection}
 
 <!-- PLAN D'AMORTISSEMENT -->
 <div class="section-title">Plan d'amortissement</div>
@@ -1549,7 +1692,7 @@ function printFiche(id){
   <span>Document généré le ${today}</span>
 </div>
 
-<scr` + `ipt>window.addEventListener('load',()=>setTimeout(()=>window.print(),300));<\/script>
+<scr` + `ipt>window.addEventListener('load',()=>setTimeout(()=>window.print(),500));<\/script>
 </body></html>`;
 
   const w=window.open('','_blank','width=900,height=700');
@@ -1879,14 +2022,15 @@ function loadTVAToForm(im){
   if(document.getElementById('fc-tva-cpt'))document.getElementById('fc-tva-cpt').value=tva.compte||'445362';
 }
 function calcRegularisationTVA(im,dateCession){
-  // Régularisation TVA si cession avant 5 ans
+  // Régularisation TVA si cession avant fin DPU
   if(!im.tva||!im.tva.montant)return 0;
   const acq=new Date(im.dateAcq||im.dateMis);
   const cess=new Date(dateCession);
+  const duree = im.duree || 5;
   const anneesUse=Math.floor((cess-acq)/(1000*60*60*24*365));
-  if(anneesUse>=5)return 0;
-  // Reversement prorata = TVA × (5 - années utilisées) / 5
-  return Math.round(im.tva.montant*(5-anneesUse)/5);
+  if(anneesUse>=duree)return 0;
+  // Reversement prorata = TVA × (DPU - années utilisées) / DPU
+  return Math.round(im.tva.montant*(duree-anneesUse)/duree);
 }
 
 // ══════════════════════════════════════════
@@ -2133,7 +2277,7 @@ function calcRevision(){
   }
 }
 function appliquerRevision(){
-  if(!guardWrite())return;
+  if(!guard('revisions', 'apply'))return;
   const im=DB.immobilisations.find(x=>x.id===curDetId);if(!im)return;
   const dateRev=document.getElementById('rev-date')?.value;
   const newDur=+document.getElementById('rev-dur')?.value||0;
@@ -2164,6 +2308,59 @@ function appliquerRevision(){
   loadRevisions(curDetId);
   openDet(curDetId);
   toast(`Révision appliquée — durée résiduelle : ${newDur} ans à partir du ${FD(dateRev)}`);
+}
+function appliquerReajustement(){
+  if(!guard('revisions', 'apply'))return;
+  const im=DB.immobilisations.find(x=>x.id===curDetId);if(!im)return;
+  const dateReaj=document.getElementById('reajust-date')?.value;
+  const montant=+document.getElementById('reajust-montant')?.value;
+  const motif=document.getElementById('reajust-motif')?.value.trim();
+  if(!dateReaj||isNaN(montant)||montant===0){toast('Date et montant valide obligatoires','e');return;}
+  if(!motif){toast('Le motif est obligatoire','e');return;}
+  if(!confirm(`Enregistrer ce réajustement exceptionnel de ${F(montant)} FCFA au ${FD(dateReaj)} ?\nCeci modifiera la VNC et le plan d'amortissement.`))return;
+  
+  if(!im.reajustements) im.reajustements=[];
+  im.reajustements.push({
+    id:'rj'+Date.now(),
+    date:dateReaj,
+    montant,
+    motif,
+    by:currentUser?.nom||'?'
+  });
+  if(!im._log)im._log=[];
+  im._log.push({ts:new Date().toISOString(),by:currentUser?.nom||'?',action:`Réajustement : ${F(montant)} FCFA, motif : ${escapeHtml(motif)}`});
+  dbSave();
+  loadReajustements(curDetId);
+  openDet(curDetId);
+  toast(`Réajustement de ${F(montant)} FCFA enregistré.`);
+}
+function deleteReajustement(rId){
+  const im=DB.immobilisations.find(x=>x.id===curDetId);if(!im||!im.reajustements)return;
+  if(confirm("Supprimer ce réajustement ?")){
+    im.reajustements = im.reajustements.filter(r=>r.id!==rId);
+    dbSave();
+    loadReajustements(curDetId);
+    openDet(curDetId);
+    toast("Réajustement supprimé");
+  }
+}
+function loadReajustements(id){
+  const im=DB.immobilisations.find(x=>x.id===id);if(!im)return;
+  const rjs=im.reajustements||[];
+  const badge=document.getElementById('det-reajust-count');
+  if(badge){badge.textContent=rjs.length;badge.style.display=rjs.length?'':'none';}
+  const tb=document.getElementById('reajust-tb');if(!tb)return;
+  tb.innerHTML=rjs.slice().reverse().map(r=>`<tr>
+    <td>${FD(r.date)}</td>
+    <td><span class="badge ${r.montant>0?'green':'red'}">${r.montant>0?'Hausse (Dotation HAO)':'Baisse (Reprise HAO)'}</span></td>
+    <td style="font-family:var(--m);font-size:12px;color:${r.montant>0?'var(--green)':'var(--red)'};text-align:right">${r.montant>0?'+':''}${F(r.montant)}</td>
+    <td style="font-size:12px">${escapeHtml(r.motif)}</td>
+    <td style="font-size:11px;color:var(--text3)">${r.by||'—'}</td>
+    <td><button class="btn sm" onclick="deleteReajustement('${r.id}')" style="color:var(--red);border-color:var(--red-light);background:#FEF2F2">Supprimer</button></td>
+  </tr>`).join('')||'<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:1rem">Aucun réajustement enregistré</td></tr>';
+  const dateEl=document.getElementById('reajust-date');if(dateEl&&!dateEl.value)dateEl.value=TD();
+  const mntEl=document.getElementById('reajust-montant');if(mntEl)mntEl.value='';
+  const mtfEl=document.getElementById('reajust-motif');if(mtfEl)mtfEl.value='';
 }
 function loadRevisions(id){
   const im=DB.immobilisations.find(x=>x.id===id);if(!im)return;
@@ -2384,7 +2581,7 @@ function updateCodePreview(){
   document.getElementById('fc0').value = code;
 }
 function delImmo(id){
-  if(!guardDelete())return;
+  if(!guard('immobilisations', 'delete'))return;
   const im = DB.immobilisations.find(x => x.id === id);
   if(!im) return;
   const hasSortie = DB.sorties.some(s => s.immoId === id);
@@ -2400,11 +2597,11 @@ function delImmo(id){
   toast('Immobilisation supprimée');
 }
 function saveImmo(){
-  if(!guardWrite())return;
-  
   const sanitize = (str) => str ? String(str).replace(/</g, '«').replace(/>/g, '»') : str;
   
   const eid=document.getElementById('f-eid').value;
+  if (eid) { if(!guard('immobilisations', 'update')) return; }
+  else { if(!guard('immobilisations', 'create')) return; }
   const des=sanitize(document.getElementById('fc1').value.trim());
   const vo=+document.getElementById('fc7').value;
   const dur=+document.getElementById('fca').value;
@@ -2812,6 +3009,7 @@ function loadDetTabs(id){
     loadPJDet(id);
     loadComposants(id);
     loadRevisions(id);
+    loadReajustements(id);
     loadUODet(id);
   },60);
 }
@@ -3367,7 +3565,7 @@ document.addEventListener('click',e=>{
 
 function onAffCh(){const id=document.getElementById('af1').value;const im=DB.immobilisations.find(x=>x.id===id);document.getElementById('af3').value=im?im.affectation||'—':'';}
 function saveAff(){
-  if(!guardWrite())return;
+  if(!guard('affectations', 'create'))return;
   const editId=document.getElementById('m-aff').dataset.editId;
   const id=document.getElementById('af1').value;const im=DB.immobilisations.find(x=>x.id===id);
   const nouv=document.getElementById('af4').value.trim();const date=document.getElementById('af2').value;
@@ -3384,7 +3582,7 @@ function saveAff(){
   im.affectation=nouv;dbSave();closeM('m-aff');rdAff();toast(editId?'Affectation modifiée':'Affectation enregistrée');
 }
 function deleteAff(id){
-  if(!guardDelete())return;
+  if(!guard('affectations', 'delete'))return;
   const idx=DB.affectations.findIndex(a=>a.id===id);
   if(idx===-1)return;
   if(confirm("Voulez-vous vraiment supprimer cette affectation ?")){
@@ -3393,7 +3591,7 @@ function deleteAff(id){
   }
 }
 function editAff(id) {
-  if(!guardWrite())return;
+  if(!guard('affectations', 'update'))return;
   const aff = DB.affectations.find(a=>a.id===id);
   if(!aff)return;
   openAffModal();
@@ -3513,17 +3711,32 @@ function calcSort(){
   const prix=+document.getElementById('so4').value||0;
   const motif=document.getElementById('so2').value;
   let res='';
-  if(motif==='cession'){const pm=prix-vnc;res=`<br>Prix de cession : <strong>${F(prix)} FCFA</strong> — Résultat : <strong style="color:${pm>=0?'var(--green)':'var(--red)'}">${pm>=0?'+':''}${F(pm)} FCFA</strong>`;}
+  
+  const tvaReverser = motif==='cession' ? calcRegularisationTVA(im, date) : 0;
+  let tvaText = tvaReverser > 0 ? `<br>TVA à reverser à l'Etat : <strong style="color:var(--red)">${F(tvaReverser)} FCFA</strong>` : '';
+  
+  if(motif==='cession'){
+    const pm=prix-vnc;
+    res=`<br>Prix de cession : <strong>${F(prix)} FCFA</strong>${tvaText} — Résultat : <strong style="color:${pm>=0?'var(--green)':'var(--red)'}">${pm>=0?'+':''}${F(pm)} FCFA</strong>`;
+    const reinvestWrap = document.getElementById('so-reinvest-wrap');
+    if(reinvestWrap) reinvestWrap.style.display = pm > 0 ? '' : 'none';
+  } else {
+    const reinvestWrap = document.getElementById('so-reinvest-wrap');
+    if(reinvestWrap) reinvestWrap.style.display = 'none';
+  }
   document.getElementById('so-info').innerHTML=`<strong>Calcul automatique :</strong><br>Cumul amortissements au ${FD(date)} : <strong>${F(cum)} FCFA</strong><br>Dotation complémentaire : <strong>${F(dc)} FCFA</strong><br>VNC à la date de sortie : <strong style="color:var(--amber)">${F(vnc)} FCFA</strong>${res}`;
 }
 function saveSort(){
-  if(!guardWrite())return;
+  if(!guard('sorties', 'create'))return;
   const editId=document.getElementById('m-sort').dataset.editId;
   const id=document.getElementById('so1').value;const date=document.getElementById('so3').value;
   if(!id||!date){toast('Champs obligatoires','e');return;}
   const im=DB.immobilisations.find(x=>x.id===id);
   const cum=cumAt(im,date);const dc=dotComp(im,date);const vnc=Math.max(0,im.vo-cum-dc);
   const prix=+document.getElementById('so4').value||0;const motif=document.getElementById('so2').value;
+  const tvaReverser = motif==='cession' ? calcRegularisationTVA(im, date) : 0;
+  const pm = motif==='cession' ? prix-vnc : -vnc;
+  const reinvestir = document.getElementById('so-reinvest')?.checked || false;
   const pendEl=document.getElementById('so-pending-flag');
   const isPending = pendEl && pendEl.checked;
   if(editId){
@@ -3531,11 +3744,12 @@ function saveSort(){
     if(s){
       s.immoId=id;s.code=im?im.code:s.code;s.designation=im?im.designation:s.designation;
       s.motif=motif;s.date=date;s.vo=im?im.vo:s.vo;s.cum=cum;s.dc=dc;s.vnc=vnc;
-      s.prix=prix;s.acheteur=document.getElementById('so5').value;s.obs=document.getElementById('so6').value;
+      s.prix=prix;s.pm=pm;s.tvaReverser=tvaReverser;s.reinvestir=reinvestir;
+      s.acheteur=document.getElementById('so5').value;s.obs=document.getElementById('so6').value;
       s.statut=isPending?'attente':'validee';
     }
   }else{
-    const sortieObj={id:'s'+Date.now(),immoId:id,code:im.code,designation:im.designation,motif,date,vo:im.vo,cum,dc,vnc,prix,acheteur:document.getElementById('so5').value,obs:document.getElementById('so6').value,statut:isPending?'attente':'validee'};
+    const sortieObj={id:'s'+Date.now(),immoId:id,code:im.code,designation:im.designation,motif,date,vo:im.vo,cum,dc,vnc,prix,pm,tvaReverser,reinvestir,acheteur:document.getElementById('so5').value,obs:document.getElementById('so6').value,statut:isPending?'attente':'validee'};
     DB.sorties.push(sortieObj);
   }
   if(!isPending && im){ im.statut='sorti'; }
@@ -3543,7 +3757,7 @@ function saveSort(){
   toast(editId?(isPending?'Sortie modifiée (en attente)':'Sortie modifiée'):(isPending?'Sortie soumise — en attente de validation':'Sortie enregistrée et validée'));
 }
 function editSort(id){
-  if(!guardWrite())return;
+  if(!guard('sorties', 'update'))return;
   const s = DB.sorties.find(x=>x.id===id);
   if(!s)return;
   openSortie();
@@ -3559,7 +3773,7 @@ function editSort(id){
   togSort();
 }
 function deleteSort(id){
-  if(!guardDelete())return;
+  if(!guard('sorties', 'delete'))return;
   const idx = DB.sorties.findIndex(x=>x.id===id);
   if(idx===-1)return;
   if(confirm("Voulez-vous vraiment supprimer cette sortie ?")){
@@ -3620,8 +3834,8 @@ function rdSorties(){
     ${isCes?`<td class="n" style="white-space:nowrap;font-family:var(--m);font-size:12px">${F(s.prix)}</td><td class="n" style="white-space:nowrap;font-family:var(--m);font-size:12px;color:${res>=0?'var(--green)':'var(--red)'}">${(res>=0?'+':'')+F(res)}</td>`:'<td colspan="2" style="white-space:nowrap;text-align:center;color:var(--text3);font-size:12px">—</td>'}
     <td style="white-space:nowrap"><button class="btn xs" onclick="showEcSort('${s.id}')">Écriture</button></td>
     <td style="white-space:nowrap;text-align:center;display:flex;gap:4px;justify-content:center">
-      <button class="btn sm" data-need-write onclick="if(guardWrite())editSort('${s.id}')" title="Modifier" style="padding:2px 6px">✏️</button>
-      <button class="btn sm d" data-need-delete onclick="if(guardDelete())deleteSort('${s.id}')" title="Supprimer" style="padding:2px 6px">🗑️</button>
+      <button class="btn sm" data-need-write onclick="if(guard('sorties','update'))editSort('${s.id}')" title="Modifier" style="padding:2px 6px">✏️</button>
+      <button class="btn sm d" data-need-delete onclick="if(guard('sorties','delete'))deleteSort('${s.id}')" title="Supprimer" style="padding:2px 6px">🗑️</button>
       <button class="btn sm" onclick="printSortie('${s.id}')" title="Imprimer" style="padding:2px 6px">🖨️</button>
     </td></tr>`;
   }).join('')||'<tr><td colspan="12" style="text-align:center;color:var(--text3);padding:2rem">Aucune sortie validée</td></tr>';
@@ -3719,7 +3933,7 @@ function printSortiesPeriod() {
 
 }
 function validerSortie(id){
-  if(!can('canValidate')){toast('Validation non autorisée pour votre rôle','e');return;}
+  if(!guard('sorties', 'validate'))return;
   const s=DB.sorties.find(x=>x.id===id);if(!s)return;
   const im=DB.immobilisations.find(x=>x.id===s.immoId);
   s.statut='validee';
@@ -3727,6 +3941,7 @@ function validerSortie(id){
   dbSave();rdSorties();rdFiches();rdDash();toast('Sortie validée — écriture disponible');
 }
 function rejeterSortie(id){
+  if(!guard('sorties', 'reject'))return;
   if(!confirm('Rejeter cette demande de sortie ?'))return;
   const idx=DB.sorties.findIndex(x=>x.id===id);
   if(idx>=0)DB.sorties.splice(idx,1);
@@ -4028,6 +4243,7 @@ function openCloture(){
   openM('m-cloture');
 }
 function cloturerExercice(){
+  if(!guard('comptabilite', 'closeExercise'))return;
   const yr=+document.getElementById('clo-yr').value;
   const conf=document.getElementById('clo-confirm').value.trim();
   if(!yr||yr<2000){toast('Exercice invalide','e');return;}
@@ -5195,6 +5411,29 @@ async function saveUser(){
 }
 
 // ── ROLES ──
+const RBAC_SCHEMA = {
+  immobilisations: { libelle: 'Immobilisations', actions: { read: 'Lire', create: 'Créer', update: 'Modifier', delete: 'Supprimer', export: 'Exporter', import: 'Importer', attachmentCreate: 'Ajouter P.J.', attachmentDelete: 'Supprimer P.J.' } },
+  composants: { libelle: 'Composants', actions: { create: 'Créer', delete: 'Supprimer' } },
+  uoe: { libelle: 'Unités d\'Oeuvre', actions: { create: 'Saisir', delete: 'Supprimer' } },
+  revisions: { libelle: 'Révisions (IAS 8)', actions: { simulate: 'Simuler', apply: 'Appliquer', export: 'Exporter' } },
+  maintenance: { libelle: 'Maintenance', actions: { create: 'Saisir' } },
+  depenses: { libelle: 'Dépenses', actions: { create: 'Saisir', delete: 'Supprimer' } },
+  analytique: { libelle: 'Analytique', actions: { read: 'Lire', create: 'Créer', delete: 'Supprimer', export: 'Exporter' } },
+  affectations: { libelle: 'Affectations', actions: { create: 'Créer', update: 'Modifier', delete: 'Supprimer' } },
+  sorties: { libelle: 'Sorties', actions: { create: 'Créer', update: 'Modifier', delete: 'Supprimer', validate: 'Valider', reject: 'Rejeter', export: 'Exporter', readAccountingEntry: 'Voir écriture' } },
+  inventaire: { libelle: 'Inv. Physique', actions: { generate: 'Générer', save: 'Enregistrer', restore: 'Restaurer', delete: 'Supprimer', export: 'Exporter', proposeSortie: 'Proposer Sortie' } },
+  inventaireContradictoire: { libelle: 'Inv. Contradictoire', actions: { open: 'Ouvrir', scan: 'Scanner', reset: 'Réinitialiser', surplusCreate: 'Créer surplus', surplusDelete: 'Supprimer surplus', validate: 'Valider', export: 'Exporter' } },
+  amortissements: { libelle: 'Amortissements', actions: { read: 'Lire', export: 'Exporter' } },
+  comptabilite: { libelle: 'Comptabilité', actions: { generate: 'Générer', export: 'Exporter', closeExercise: 'Clôturer Ex.' } },
+  rapports: { libelle: 'Rapports', actions: { read: 'Lire', export: 'Exporter', fixNatures: 'Corriger natures' } },
+  budget: { libelle: 'Budget', actions: { create: 'Créer', update: 'Modifier', delete: 'Supprimer', reset: 'Réinitialiser', export: 'Exporter' } },
+  parametres: { libelle: 'Paramètres', actions: { update: 'Modifier', entityUpdate: 'Modif. Entité', categoriesManage: 'Gérer Catégories', accountsManage: 'Gérer Comptes', codificationManage: 'Gérer Codes', cloudManage: 'Gérer Cloud', backupImport: 'Import Sauvegarde', backupExport: 'Export Sauvegarde', sessionManage: 'Gérer Sessions' } },
+  utilisateurs: { libelle: 'Utilisateurs', actions: { create: 'Créer', update: 'Modifier', statusUpdate: 'Modif. Statut', passwordReset: 'Reset Mdp' } },
+  roles: { libelle: 'Rôles', actions: { create: 'Créer', update: 'Modifier', delete: 'Supprimer' } },
+  audit: { libelle: 'Audit', actions: { read: 'Lire', export: 'Exporter', clear: 'Vider' } },
+  licence: { libelle: 'Licence', actions: { activate: 'Activer', deactivate: 'Désactiver', generateKey: 'Générer clé' } }
+};
+
 function rdRoles(){
   try{
     if(!DB.roles || !DB.roles.length){
@@ -5203,13 +5442,16 @@ function rdRoles(){
     }
     document.getElementById('role-tb').innerHTML=DB.roles.map(r=>{
       const perms = r.perms||{};
-      const permsArr = [];
-      if(perms.canWrite) permsArr.push('Écriture');
-      if(perms.canDelete) permsArr.push('Suppression');
-      if(perms.canValidate) permsArr.push('Validation');
-      if(perms.canAdmin) permsArr.push('Administration');
-      if(perms.canExport) permsArr.push('Export');
-      const permsStr = permsArr.length ? permsArr.join(', ') : 'Aucune';
+      // Compter le nombre de permissions actives
+      let activeCount = 0;
+      let totalCount = 0;
+      Object.keys(perms).forEach(m => {
+        Object.keys(perms[m]).forEach(a => {
+          totalCount++;
+          if (perms[m][a]) activeCount++;
+        });
+      });
+      const permsStr = `${activeCount} droit(s) configuré(s)`;
       
       return `<tr>
         <td><span class="badge ${r.badge||'gr'}">${r.libelle||r.id}</span></td>
@@ -5228,14 +5470,32 @@ function rdRoles(){
   }
 }
 
+function renderRoleCheckboxMatrix(rolePerms) {
+  let html = '';
+  Object.keys(RBAC_SCHEMA).forEach(moduleKey => {
+    const mod = RBAC_SCHEMA[moduleKey];
+    html += `<div style="margin-bottom: 8px; border: 1px solid var(--border2); border-radius: var(--r); padding: 8px;">`;
+    html += `<div style="font-weight: 600; margin-bottom: 4px;">${mod.libelle}</div>`;
+    html += `<div style="display: flex; flex-wrap: wrap; gap: 8px;">`;
+    Object.keys(mod.actions).forEach(actionKey => {
+      const act = mod.actions[actionKey];
+      const isChecked = rolePerms && rolePerms[moduleKey] && rolePerms[moduleKey][actionKey] ? 'checked' : '';
+      const checkboxId = `cb-perm-${moduleKey}-${actionKey}`;
+      html += `<label style="display:flex; align-items:center; gap:4px; font-size:12px; white-space:nowrap; cursor:pointer;">
+                 <input type="checkbox" id="${checkboxId}" ${isChecked}>
+                 ${act}
+               </label>`;
+    });
+    html += `</div></div>`;
+  });
+  return html;
+}
+
 function openMRole(id){
-  if(!guardAdmin())return;
+  if(!guard('roles', 'update'))return;
   document.getElementById('m-role-id').value = '';
   document.getElementById('m-role-libelle').value = '';
   document.getElementById('m-role-badge').value = 'gr';
-  ['canWrite','canDelete','canValidate','canAdmin','canExport'].forEach(p => {
-    document.getElementById('m-role-'+p).checked = false;
-  });
   
   if(id){
     const r = DB.roles.find(x => x.id === id);
@@ -5244,21 +5504,20 @@ function openMRole(id){
       document.getElementById('m-role-id').disabled = true;
       document.getElementById('m-role-libelle').value = r.libelle;
       document.getElementById('m-role-badge').value = r.badge || 'gr';
-      const perms = r.perms || {};
-      ['canWrite','canDelete','canValidate','canAdmin','canExport'].forEach(p => {
-        document.getElementById('m-role-'+p).checked = !!perms[p];
-      });
+      document.getElementById('m-role-perms').innerHTML = renderRoleCheckboxMatrix(r.perms || {});
       document.getElementById('m-role-title').textContent = 'Modifier un rôle';
     }
   } else {
     document.getElementById('m-role-id').disabled = false;
+    document.getElementById('m-role-libelle').value = '';
     document.getElementById('m-role-title').textContent = 'Créer un rôle';
+    document.getElementById('m-role-perms').innerHTML = renderRoleCheckboxMatrix({});
   }
   openM('m-role');
 }
 
 function saveRole(){
-  if(!guardAdmin())return;
+  if(!guard('roles', 'update'))return;
   const idInp = document.getElementById('m-role-id');
   const id = idInp.value.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '');
   const libelle = document.getElementById('m-role-libelle').value.trim();
@@ -5267,8 +5526,12 @@ function saveRole(){
   if(!id || !libelle){toast('ID et libellé obligatoires','e');return;}
   
   const perms = {};
-  ['canWrite','canDelete','canValidate','canAdmin','canExport'].forEach(p => {
-    perms[p] = document.getElementById('m-role-'+p).checked;
+  Object.keys(RBAC_SCHEMA).forEach(moduleKey => {
+    perms[moduleKey] = {};
+    Object.keys(RBAC_SCHEMA[moduleKey].actions).forEach(actionKey => {
+      const cb = document.getElementById(`cb-perm-${moduleKey}-${actionKey}`);
+      if (cb) perms[moduleKey][actionKey] = cb.checked;
+    });
   });
   
   const existing = DB.roles.findIndex(x => x.id === id);
@@ -5276,6 +5539,7 @@ function saveRole(){
     if(existing > -1){
       DB.roles[existing].libelle = libelle;
       DB.roles[existing].badge = badge;
+      DB.roles[existing].perms = perms;
       DB.roles[existing].perms = perms;
       toast('Rôle modifié');
     }
@@ -5996,7 +6260,7 @@ function calcGRevision(){
   document.getElementById('grev-compare').style.display='block';
 }
 function appliquerGRevision(){
-  if(!guardWrite())return;
+  if(!guard('revisions', 'apply'))return;
   const im=_gRevImmo;
   if(!im){toast('Sélectionnez une immobilisation','e');return;}
   const dateRev=document.getElementById('grev-date').value;
@@ -6301,7 +6565,7 @@ function calcBudgetPreview(){
   }
 }
 function saveBudgetLine(){
-  if(!guardWrite())return;
+  if(!guard('budget', 'create'))return;
   const yr=+document.getElementById('bud-m-yr').value;
   const des=document.getElementById('bud-m-des').value.trim();
   const vo=+document.getElementById('bud-m-vo').value;
@@ -6321,7 +6585,7 @@ function saveBudgetLine(){
   rdBudget();
 }
 function deleteBudgetLine(id){
-  if(!guardDelete())return;
+  if(!guard('budget', 'delete'))return;
   if(!confirm('Supprimer cette ligne budgétaire ?'))return;
   DB.budgetLines=(DB.budgetLines||[]).filter(x=>x.id!==id);
   dbSave();
@@ -6435,7 +6699,7 @@ function popCatSelectors(){
 document.getElementById('unom').textContent='Amadou Diallo';
 document.getElementById('urole').textContent='Administrateur';
 document.getElementById('tbd').textContent=new Date().toLocaleDateString('fr-FR',{weekday:'short',day:'numeric',month:'short',year:'numeric'});
-document.getElementById('btn-f-new').onclick=()=>{if(guardWrite())openNewImmo();};
+document.getElementById('btn-f-new').onclick=()=>{if(guard('immobilisations','create'))openNewImmo();};
 rdPrmCat();popSortSel();popCatSelectors();popRapFltSelectors();
 const _budYrEl=document.getElementById('bud-yr-start');
 if(_budYrEl&&!_budYrEl.value)_budYrEl.value=new Date().getFullYear();
@@ -6832,6 +7096,7 @@ function showJournalMeta(id){
 }
 
 function clearJournal(){
+  if(!guard('audit', 'clear'))return;
   if(!confirm('Effacer tout le journal ? Action irréversible.'))return;
   DB.journal=[];dbSave();rdJournal();toast('Journal effacé');
 }
@@ -6987,7 +7252,7 @@ function calcVO(){
   const vo  = document.getElementById('fc7');
   const lotMode = document.getElementById('fgr-lot-mode');
   // Calculer la valeur totale
-  if(vo){ vo.value = qty > 0 ? Math.round(pu * qty) : ''; onVOCh(); }
+  if(vo){ vo.value = qty > 0 ? Math.round(pu * qty) : ''; onVOCh(); calcTVA(); }
   // Afficher le sélecteur de mode uniquement si qty > 1
   if(lotMode) lotMode.style.display = qty > 1 ? '' : 'none';
 }

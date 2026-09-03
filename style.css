@@ -104,9 +104,11 @@ body {
 .logo-name span { color: #94A3B8; font-weight: 400; }
 .logo-ver { font-size: 11px; color: #64748B; margin-top: 2px; }
 
-.nav-sec { display: block; font-size: 11px; font-weight: 600; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; padding: 1.25rem 1.5rem 0.5rem; cursor: pointer; transition: all 0.2s ease; user-select: none; }
+.nav-sec { display: flex; justify-content: space-between; align-items: center; font-size: 11px; font-weight: 600; color: #64748B; text-transform: uppercase; letter-spacing: 0.05em; padding: 1.25rem 1.5rem 0.5rem; cursor: pointer; transition: all 0.2s ease; user-select: none; }
+.nav-sec::after { content: "▼"; font-size: 9px; opacity: 0.6; transition: transform 0.2s ease; transform: rotate(-90deg); }
 .nav-sec:hover { color: #94A3B8; }
 .nav-sec.expanded { font-size: 13px; color: var(--blue); }
+.nav-sec.expanded::after { transform: rotate(0deg); opacity: 1; }
 .ni { display: flex; align-items: center; gap: 12px; padding: 8px 12px; margin: 2px 12px; cursor: pointer; font-size: 13.5px; color: #94A3B8; border-radius: 8px; transition: all 0.2s ease; border-left: none; border-bottom: none; }
 .ni:hover { background: #1E293B; color: #F8FAFC; }
 .ni.active { background: var(--blue); color: #FFFFFF; font-weight: 600; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25); }
@@ -838,3 +840,8 @@ code { font-family: var(--m); font-size: 12.5px; background: var(--surface2); pa
   min-width: 0;
 }
 
+
+/* -- MARQUEE -- */
+.marquee-container { overflow: hidden; white-space: nowrap; background: #E0F2FE; border: 1px solid #BAE6FD; border-radius: 8px; margin: 1rem 1.5rem 0; padding: 0.5rem 1rem; display: flex; align-items: center; color: #0369A1; font-weight: 600; font-size: 13px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+.marquee-content { display: inline-block; padding-left: 100%; animation: marquee 20s linear infinite; }
+@keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }

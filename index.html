@@ -35,10 +35,7 @@
       f.mbaye@org.sn / <em>compta123</em> (Comptable)<br>
       o.seck@org.sn / <em>gest123</em> (Gestionnaire)
     </div>
-    <div style="text-align:center;margin-top:.75rem">
-      <button onclick="bypassLogin()" style="background:none;border:none;font-size:11px;color:var(--text3);cursor:pointer;text-decoration:underline">
-        Accéder sans mot de passe (réinitialiser les accès)
-      </button>
+
     </div>
   </div>
 </div>
@@ -79,9 +76,9 @@
     Journal d'audit
     <span id="ni-badge-journal" style="background:#EF4444;color:#fff;border-radius:10px;font-size:10px;font-weight:700;padding:1px 6px;margin-left:auto;display:none"></span>
   </div>
-  <div class="nav-sec expanded" id="nav-admin-sec" onclick="toggleSection(this)">Administration</div>
-  <div class="ni nav-admin" onclick="nav('parametres',this)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2"/></svg>Paramètres</div>
-  <div class="ni nav-admin" onclick="nav('utilisateurs',this)"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 14c0-2.76 2.24-5 5-5s5 2.24 5 5"/><path d="M12 7l1 1 2-2"/></svg>Utilisateurs & droits</div>
+  <div class="nav-sec expanded" id="nav-admin-sec" onclick="toggleSection(this)" data-perm="parametres.update">Administration</div>
+  <div class="ni nav-admin" onclick="nav('parametres',this)" data-perm="parametres.update"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="2.5"/><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2"/></svg>Paramètres</div>
+  <div class="ni nav-admin" onclick="nav('utilisateurs',this)" data-perm="utilisateurs.update"><svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="6" cy="5" r="3"/><path d="M1 14c0-2.76 2.24-5 5-5s5 2.24 5 5"/><path d="M12 7l1 1 2-2"/></svg>Utilisateurs & droits</div>
   <div class="sb-footer">
     <div style="display:flex;gap:4px;margin-bottom:8px">
       <button onclick="exportBackupJSON()" title="Sauvegarder" style="flex:1;padding:5px 6px;border:1px solid rgba(255,255,255,.15);border-radius:var(--r);background:rgba(255,255,255,.08);color:rgba(255,255,255,.7);font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px" onmouseover="this.style.background='rgba(255,255,255,.15)'" onmouseout="this.style.background='rgba(255,255,255,.08)'">
@@ -123,7 +120,7 @@
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 4V2h9v2M6.5 12V6M4 8l2.5-2.5L9 8"/></svg>
       Restaurer
     </button>
-    <button class="btn p sm" data-need-write id="btn-top-new" onclick="if(guardWrite())openNewImmo()">+ Nouvelle immobilisation</button>
+    <button class="btn p sm" data-perm="immobilisations.create" id="btn-top-new" onclick="openNewImmo()">+ Nouvelle immobilisation</button>
   </div>
 </div>
 <div id="main">
@@ -131,6 +128,12 @@
 
 <!-- ====== DASHBOARD ====== -->
 <div class="page active saas-dash" id="page-dashboard">
+  <!-- Message défilant -->
+  <div class="marquee-container">
+    <div class="marquee-content" id="marquee-text">
+      Bienvenue sur ImmoGestion ! Le logiciel de référence pour la gestion de vos immobilisations, le calcul de vos amortissements (Linéaire, Dégressif, Accéléré) et le suivi conforme aux normes SYSCOHADA.
+    </div>
+  </div>
   <!-- En-tête (Header) géré par JS -->
   <div id="saas-hero"></div>
 
@@ -218,7 +221,7 @@
         <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M6.5 1v8M3.5 6l3 3 3-3M1 10h11v2H1z"/></svg>
         Importer CSV
       </button>
-      <button class="btn p" data-need-write id="btn-f-new">+ Nouvelle fiche</button>
+      <button class="btn p" data-perm="immobilisations.create" id="btn-f-new">+ Nouvelle fiche</button>
     </div>
   </div>
   <div class="sb2">
@@ -429,7 +432,7 @@
 
 <!-- ====== AFFECTATIONS ====== -->
 <div class="page" id="page-affectations">
-  <div class="ph"><div><h1>Gestion des affectations</h1><p>Mouvements et transferts d'immobilisations</p></div><div class="ph-r"><button class="btn p" data-need-write onclick="if(guardWrite())openAffModal()">+ Nouvelle affectation</button></div></div>
+  <div class="ph"><div><h1>Gestion des affectations</h1><p>Mouvements et transferts d'immobilisations</p></div><div class="ph-r"><button class="btn p" data-perm="affectations.create" onclick="openAffModal()">+ Nouvelle affectation</button></div></div>
   <div class="sb2" style="margin-bottom:1rem">
     <select id="aff-flt-immo" onchange="rdAff()" style="padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:13px;font-family:var(--f);background:var(--surface);color:var(--text)"><option value="">Toutes les immobilisations</option></select>
     <select id="aff-flt-lieu" onchange="rdAff()" style="padding:8px 10px;border:1px solid var(--border2);border-radius:var(--r);font-size:13px;font-family:var(--f);background:var(--surface);color:var(--text)"><option value="">Tous les lieux</option></select>
@@ -446,7 +449,7 @@
 <!-- ====== SORTIES ====== -->
 <div class="page" id="page-sorties">
   <style>#page-sorties table td { max-width: none; }</style>
-  <div class="ph"><div><h1>Sorties d'actifs</h1><p>Cession · Mise au rebut · Vol — dotation complémentaire automatique</p></div><div class="ph-r"><button class="btn p" data-need-write onclick="if(guardWrite())openSortie(null)">+ Enregistrer une sortie</button></div></div>
+  <div class="ph"><div><h1>Sorties d'actifs</h1><p>Cession · Mise au rebut · Vol — dotation complémentaire automatique</p></div><div class="ph-r"><button class="btn p" data-perm="sorties.create" onclick="openSortie(null)">+ Enregistrer une sortie</button></div></div>
   <div class="kgrid" style="grid-template-columns:repeat(4,1fr)">
     <div class="kpi"><div class="kpi-l">En attente</div><div class="kpi-v a" id="snb-att">0</div><div class="kpi-s">À valider</div></div>
     <div class="kpi"><div class="kpi-l">Cessions</div><div class="kpi-v b" id="snbc">0</div></div>
@@ -550,7 +553,7 @@
         </div>
       </div>
       <div style="display:flex;gap:8px">
-        <button class="btn p" onclick="appliquerGRevision()" data-need-write>Appliquer la révision</button>
+        <button class="btn p" onclick="appliquerGRevision()" data-perm="revisions.apply">Appliquer la révision</button>
         <button class="btn" onclick="calcGRevision()">Calculer l'impact</button>
       </div>
     </div>
@@ -644,7 +647,7 @@
   <div class="card">
     <div class="ch">
       <h3>Acquisitions planifiées</h3>
-      <button class="btn p sm" onclick="openBudgetModal()" data-need-write>+ Ajouter</button>
+      <button class="btn p sm" onclick="openBudgetModal()" data-perm="budget.create">+ Ajouter</button>
     </div>
     <div class="tw">
       <table>
@@ -693,7 +696,7 @@
   <!-- Filtre inline date/période — même style que tableau amortissements -->
   <div class="card" style="margin-bottom:1rem">
     <div class="cb">
-      <div class="fg c3" style="align-items:flex-end;gap:1rem">
+      <div class="fg c3" style="align-items:flex-start;gap:1rem">
 
         <!-- Date d'écriture -->
         <div class="fgr">
@@ -732,7 +735,7 @@
         </div>
 
         <!-- Boutons -->
-        <div style="display:flex;gap:6px;flex-wrap:wrap">
+        <div class="full" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;">
           <button class="btn p" onclick="genEc()">
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,10 4,6 7,8 10,3 12,5"/><line x1="1" y1="12" x2="12" y2="12"/></svg>
             Générer
@@ -1384,6 +1387,7 @@
         <option value="lin">Linéaire</option>
         <option value="deg">Dégressif comptable (SYSCOHADA)</option>
         <option value="degf">Dégressif fiscal (Sénégal — VNC × taux)</option>
+        <option value="acc">Accéléré (Sénégal)</option>
         <option value="uo">Unités d'œuvre</option>
       </select></div>
       <div class="fgr"><label>Durée éco. (années) *</label><input type="number" id="fca" placeholder="5" min="1" oninput="onVOCh()"></div>
@@ -1391,7 +1395,7 @@
       <div class="fgr"><label>Calendrier</label><select id="fcc2"><option value="360">Civil — 360j</option><option value="365">Financier — 365j</option></select></div>
     </div>
     <!-- TVA sur immobilisation -->
-    <div class="fg c3" style="margin-top:.5rem; display:none;">
+    <div class="fg c3" style="margin-top:.5rem;">
       <div class="fgr"><label>Montant TVA (FCFA)</label><input type="number" id="fc-tva" placeholder="0" title="TVA déductible sur l'acquisition"></div>
       <div class="fgr"><label>Taux TVA (%)</label><input type="number" id="fc-tva-taux" placeholder="18" step="0.1" oninput="calcTVA()"></div>
       <div class="fgr"><label>Compte TVA</label><input type="text" id="fc-tva-cpt" placeholder="445362" style="font-family:var(--m)" value="445362"></div>
@@ -1548,6 +1552,7 @@
       <div class="tab" onclick="stab(this,'d-amort')">Plan d'amortissement</div>
       <div class="tab" onclick="stab(this,'d-composants')">Composants <span class="nbadge" id="det-comp-count" style="display:none;background:var(--blue)"></span></div>
       <div class="tab" onclick="stab(this,'d-revision')">Révision durée <span class="nbadge" id="det-rev-count" style="display:none;background:var(--amber)"></span></div>
+      <div class="tab" onclick="stab(this,'d-reajustement')">Réajustements <span class="nbadge" id="det-reajust-count" style="display:none;background:var(--purple)"></span></div>
       <div class="tab" onclick="stab(this,'d-pj')">Pièces jointes <span class="nbadge" id="det-pj-count" style="display:none;background:var(--blue)"></span></div>
       <div class="tab" onclick="stab(this,'d-maint')">Garantie & Maintenance</div>
       <div class="tab" onclick="stab(this,'d-dep')">Dépenses ultérieures</div>
@@ -1616,6 +1621,24 @@
       </div>
       <!-- Historique des révisions -->
       <div class="tw"><table><thead><tr><th>Date</th><th>Ancienne durée/méthode</th><th>Nouvelle durée/méthode</th><th>VNC à la révision</th><th>Motif</th><th>Par</th></tr></thead><tbody id="rev-tb"></tbody></table></div>
+    </div>
+    <!-- Réajustement des Amortissements (SYSCOHADA) -->
+    <div class="tp" id="d-reajustement">
+      <div class="alert i" style="margin-bottom:.75rem">Le <strong>réajustement</strong> corrige une erreur d'estimation passée. Il ajoute une dotation ou reprise exceptionnelle (comptes 852/862 HAO) à une date précise, modifiant ainsi rétroactivement le cumul et la VNC.</div>
+      <div class="card" style="margin:0 0 .75rem">
+        <div class="ch"><h3>Ajouter un réajustement ponctuel</h3></div>
+        <div class="cb">
+          <div class="fg c3">
+            <div class="fgr"><label>Date d'inventaire *</label><input type="date" id="reajust-date"></div>
+            <div class="fgr"><label>Montant du réajustement (FCFA) *</label><input type="number" id="reajust-montant" placeholder="Positif (hausse) ou négatif (baisse)"></div>
+            <div class="fgr full"><label>Motif / Erreur constatée *</label><input type="text" id="reajust-motif" placeholder="Ex: Omission de dotation en 2021, changement de taux applicable..."></div>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:.75rem">
+            <button class="btn p sm" onclick="appliquerReajustement()">Enregistrer le réajustement</button>
+          </div>
+        </div>
+      </div>
+      <div class="tw"><table><thead><tr><th>Date</th><th>Type</th><th style="text-align:right">Montant (FCFA)</th><th>Motif</th><th>Par</th><th>Action</th></tr></thead><tbody id="reajust-tb"></tbody></table></div>
     </div>
     <!-- Pièces jointes -->
     <div class="tp" id="d-pj">
@@ -1724,6 +1747,9 @@
       <div class="fgr" id="so-pg"><label>Prix de cession (FCFA)</label><input type="number" id="so4" placeholder="0" oninput="calcSort()"></div>
       <div class="fgr"><label>Acheteur / Destinataire</label><input type="text" id="so5" placeholder="Nom..."></div>
       <div class="fgr full"><label>Observations</label><textarea id="so6" placeholder="Précisez les circonstances..."></textarea></div>
+      <div class="fgr full" id="so-reinvest-wrap" style="display:none;margin-top:4px">
+        <label><input type="checkbox" id="so-reinvest" style="accent-color:var(--green)"> Engagement à réinvestir la Plus-Value</label>
+      </div>
     </div>
     <div class="divider"></div>
     <div class="alert i" id="so-info">Sélectionnez une immobilisation pour voir le calcul.</div>
@@ -1844,13 +1870,9 @@
         <option value="pu">Violet</option>
       </select></div>
     </div>
-    <div class="fsec">Autorisations globales</div>
-    <div style="display:flex;flex-direction:column;gap:8px">
-      <label class="ci"><input type="checkbox" id="m-role-canWrite"> <strong>Écriture</strong> (Ajouter, modifier des fiches)</label>
-      <label class="ci"><input type="checkbox" id="m-role-canDelete"> <strong>Suppression</strong> (Supprimer des fiches)</label>
-      <label class="ci"><input type="checkbox" id="m-role-canValidate"> <strong>Validation</strong> (Valider des affectations/sorties)</label>
-      <label class="ci"><input type="checkbox" id="m-role-canExport"> <strong>Export</strong> (Exporter des données CSV/Excel)</label>
-      <label class="ci"><input type="checkbox" id="m-role-canAdmin"> <strong>Administration</strong> (Paramètres, rôles, utilisateurs)</label>
+    <div class="fsec">Autorisations (Permissions granulaires)</div>
+    <div id="m-role-perms" style="max-height: 400px; overflow-y: auto; padding-right: 8px; font-size: 13px;">
+      <!-- Généré par JS -->
     </div>
   </div>
   <div class="mf"><button class="btn" onclick="closeM('m-role')">Annuler</button><button class="btn p" onclick="saveRole()">Enregistrer</button></div>
