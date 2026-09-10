@@ -25,7 +25,7 @@
       Si vous venez d'une version précédente, utilisez <strong>Accéder sans mot de passe</strong> ci-dessous pour réinitialiser les accès.
     </div>
     <div style="display:flex;flex-direction:column;gap:.85rem">
-      <div class="fgr"><label>Adresse email</label><input type="email" id="login-email" placeholder="email@organisation.sn" onkeydown="if(event.key==='Enter')doLogin()"></div>
+      <div class="fgr"><label>Adresse email</label><input type="text" id="login-email" placeholder="email@organisation.sn" onkeydown="if(event.key==='Enter')doLogin()"></div>
       <div class="fgr"><label>Mot de passe</label><input type="password" id="login-pwd" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
       <button class="btn p" onclick="doLogin()" style="width:100%;justify-content:center;padding:10px;font-size:14px;margin-top:.5rem;border-radius:var(--r)">Se connecter</button>
     </div>
@@ -45,9 +45,11 @@
 <!-- SIDEBAR -->
 <!-- ═══ SIDEBAR ═══ -->
 <nav id="sb">
-  <div class="sb-logo">
+  <div class="sb-logo" onclick="nav('dashboard', document.querySelector('.ni[onclick*=\'dashboard\']'))" style="cursor: pointer;">
     <div class="logo-wrap">
-      <div class="logo-icon" id="sb-logo-icon"><svg width="18" height="18" viewBox="0 0 18 18"><rect x="1" y="1" width="7" height="7" rx="1.5"/><rect x="10" y="1" width="7" height="7" rx="1.5"/><rect x="1" y="10" width="7" height="7" rx="1.5"/><rect x="10" y="10" width="7" height="7" rx="1.5"/></svg></div>
+      <div class="logo-icon" id="sb-logo-icon" style="background: transparent; box-shadow: none;">
+        <img src="LOGO.png" alt="Logo" style="width: 100%; height: 100%; object-fit: contain;">
+      </div>
       <div><div class="logo-name">Immo<span>Gestion</span></div><div class="logo-ver">Version 2.0</div></div>
     </div>
   </div>
@@ -128,41 +130,36 @@
 
 <!-- ====== DASHBOARD ====== -->
 <div class="page active saas-dash" id="page-dashboard">
-  <!-- Message défilant -->
-  <div class="marquee-container">
-    <div class="marquee-content" id="marquee-text">
-      Bienvenue sur ImmoGestion ! Le logiciel de référence pour la gestion de vos immobilisations, le calcul de vos amortissements (Linéaire, Dégressif, Accéléré) et le suivi conforme aux normes SYSCOHADA.
-    </div>
-  </div>
   <!-- En-tête (Header) géré par JS -->
   <div id="saas-hero"></div>
 
   <!-- Cartes KPI (Rangée de 4) -->
   <div class="saas-kpi-grid" id="saas-kpi-grid"></div>
 
-  <!-- Nouvelle disposition (Image 2) -->
-  <div class="saas-new-grid" style="margin-top: 1.5rem;">
+  <!-- Nouvelle disposition -->
+  <div class="saas-new-grid" style="margin-top: 0.5rem;">
     <!-- Colonne Gauche: Donut -->
     <div class="saas-new-left">
       <div class="saas-card" style="height: 100%;">
         <div class="saas-card-header">
           <h3>Répartition par catégorie</h3>
         </div>
-        <div class="saas-card-body" style="display:flex; flex-direction:column; align-items:center; gap:1rem;">
-          <div style="width: 100%; max-width: 160px; position: relative;">
+        <!-- Alignement horizontal : donut à gauche, données à droite -->
+        <div class="saas-card-body" style="display:flex; flex-direction:row; align-items:center; gap:2rem; padding: 1.5rem;">
+          <div style="flex-shrink: 0; width: 160px; position: relative;">
              <canvas id="saasDonutChart"></canvas>
              <div id="saas-donut-center" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); text-align: center; pointer-events: none;">
                 <div style="font-size: 11px; color: var(--text3); font-weight: 500;">TOTAL VNC</div>
                 <div id="saas-donut-total" style="font-size: 14px; font-weight: 700; color: var(--text);"></div>
              </div>
           </div>
-          <div id="saas-donut-legend" style="width: 100%;"></div>
+          <div id="saas-donut-legend" style="flex: 1;"></div>
         </div>
       </div>
     </div>
 
-    <!-- Colonne Droite: Vue d'ensemble (6 KPIs) & Accès rapides -->
-    <div class="saas-new-right" style="display:flex; flex-direction:column; justify-content:space-between; height:100%; gap:1.5rem;">
+    <!-- Colonne Droite: Vue d'ensemble (6 KPIs) -->
+    <div class="saas-new-right" style="display:flex; flex-direction:column; justify-content:flex-start; height:100%; gap:0.5rem;">
       <div class="saas-card" style="flex:1;">
         <div class="saas-card-header">
           <h3>Vue d'ensemble</h3>
@@ -173,36 +170,36 @@
           </div>
         </div>
       </div>
+    </div>
+  </div>
 
-      <!-- Accès rapides -->
-      <div class="saas-card">
-        <div class="saas-card-header">
-          <h3>Accès rapides</h3>
-        </div>
-        <div class="saas-card-body" style="padding: 1rem;">
-          <div class="saas-quick-access">
-            <button class="saas-qa-btn" onclick="if(guardWrite())openNewImmo()">
-              <div class="qa-icon" style="background:#e8f4fd;color:#2563eb"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4"/></svg></div>
-              <div class="qa-text">Nouvelle<br>immobilisation</div>
-            </button>
-            <button class="saas-qa-btn" onclick="nav('dotations',null)">
-              <div class="qa-icon" style="background:#fef3c7;color:#d97706"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16m-7 6h7"/></svg></div>
-              <div class="qa-text">Calculer<br>dotation</div>
-            </button>
-            <button class="saas-qa-btn" onclick="nav('rapports',null)">
-              <div class="qa-icon" style="background:#f3f4f6;color:#4b5563"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
-              <div class="qa-text">Rapport<br>amortissements</div>
-            </button>
-            <button class="saas-qa-btn" onclick="nav('inventaire',null)">
-              <div class="qa-icon" style="background:#f0fdf4;color:#16a34a"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg></div>
-              <div class="qa-text">Inventaire<br>physique</div>
-            </button>
-            <button class="saas-qa-btn" onclick="nav('sorties',null)">
-              <div class="qa-icon" style="background:#f3e8ff;color:#9333ea"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg></div>
-              <div class="qa-text">Mouvements<br>d'actifs</div>
-            </button>
-          </div>
-        </div>
+  <!-- Accès rapides (en dessous des deux sections) -->
+  <div class="saas-card" style="margin-top: 0.5rem;">
+    <div class="saas-card-header">
+      <h3>Accès rapides</h3>
+    </div>
+    <div class="saas-card-body" style="padding: 1rem;">
+      <div class="saas-quick-access">
+        <button class="saas-qa-btn" onclick="openNewImmo()" data-perm="immobilisations.create">
+          <div class="qa-icon" style="background:#e8f4fd;color:#2563eb"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4"/></svg></div>
+          <div class="qa-text">Nouvelle<br>immobilisation</div>
+        </button>
+        <button class="saas-qa-btn" onclick="nav('dotations',null)">
+          <div class="qa-icon" style="background:#fef3c7;color:#d97706"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h16M4 12h16m-7 6h7"/></svg></div>
+          <div class="qa-text">Calculer<br>dotation</div>
+        </button>
+        <button class="saas-qa-btn" onclick="nav('rapports',null)">
+          <div class="qa-icon" style="background:#f3f4f6;color:#4b5563"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg></div>
+          <div class="qa-text">Rapport<br>amortissements</div>
+        </button>
+        <button class="saas-qa-btn" onclick="nav('inventaire',null)">
+          <div class="qa-icon" style="background:#f0fdf4;color:#16a34a"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg></div>
+          <div class="qa-text">Inventaire<br>physique</div>
+        </button>
+        <button class="saas-qa-btn" onclick="nav('sorties',null)">
+          <div class="qa-icon" style="background:#f3e8ff;color:#9333ea"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg></div>
+          <div class="qa-text">Mouvements<br>d'actifs</div>
+        </button>
       </div>
     </div>
   </div>
@@ -1553,6 +1550,7 @@
       <div class="tab" onclick="stab(this,'d-composants')">Composants <span class="nbadge" id="det-comp-count" style="display:none;background:var(--blue)"></span></div>
       <div class="tab" onclick="stab(this,'d-revision')">Révision durée <span class="nbadge" id="det-rev-count" style="display:none;background:var(--amber)"></span></div>
       <div class="tab" onclick="stab(this,'d-reajustement')">Réajustements <span class="nbadge" id="det-reajust-count" style="display:none;background:var(--purple)"></span></div>
+      <div class="tab" onclick="stab(this,'d-ecritures')">Écritures Comptables</div>
       <div class="tab" onclick="stab(this,'d-pj')">Pièces jointes <span class="nbadge" id="det-pj-count" style="display:none;background:var(--blue)"></span></div>
       <div class="tab" onclick="stab(this,'d-maint')">Garantie & Maintenance</div>
       <div class="tab" onclick="stab(this,'d-dep')">Dépenses ultérieures</div>
@@ -1640,6 +1638,39 @@
       </div>
       <div class="tw"><table><thead><tr><th>Date</th><th>Type</th><th style="text-align:right">Montant (FCFA)</th><th>Motif</th><th>Par</th><th>Action</th></tr></thead><tbody id="reajust-tb"></tbody></table></div>
     </div>
+    <!-- Écritures Comptables -->
+    <div class="tp" id="d-ecritures">
+      <div class="alert i" style="margin-bottom:.75rem">
+        Génération automatique du <strong>Brouillard de Journalisation</strong> selon le plan comptable SYSCOHADA. 
+      </div>
+      <div class="card" style="margin-bottom:1rem">
+        <div class="cb" style="display:flex; gap:10px; align-items:center;">
+          <label style="font-weight:600; font-size:12px;">Filtrer par type :</label>
+          <select id="filtre-ecriture" onchange="loadEcritures(curDetId)" style="padding:6px; font-size:12px; border-radius:4px; border:1px solid var(--border2);">
+            <option value="ALL">Toutes les écritures</option>
+            <option value="ACQ">Acquisition</option>
+            <option value="DOT">Dotations Annuelles</option>
+            <option value="REAJ">Réajustements HAO</option>
+            <option value="SORT">Sorties (Cession/Rebut)</option>
+          </select>
+        </div>
+      </div>
+      <div class="tw">
+        <table class="at">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Journal</th>
+              <th>Compte</th>
+              <th>Libellé / Intitulé</th>
+              <th style="text-align:right">Débit</th>
+              <th style="text-align:right">Crédit</th>
+            </tr>
+          </thead>
+          <tbody id="ecritures-tb"></tbody>
+        </table>
+      </div>
+    </div>
     <!-- Pièces jointes -->
     <div class="tp" id="d-pj">
       <div style="margin-bottom:.75rem;display:flex;gap:8px;align-items:center">
@@ -1703,7 +1734,7 @@
     <div class="tp" id="d-hist"><div id="det-hist"></div></div>
   </div>
   <div class="mf">
-    <button class="btn d" id="btn-det-del" style="margin-right:auto">
+    <button class="btn d" id="btn-det-del" data-perm="immobilisations.delete" style="margin-right:auto">
       <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="1,3 12,3"/><path d="M5 3V1h3v2M2 3l1 9h7l1-9"/><line x1="5" y1="6" x2="5" y2="9"/><line x1="8" y1="6" x2="8" y2="9"/></svg>
       Supprimer
     </button>
@@ -1717,7 +1748,7 @@
       Imprimer
     </button>
     <button class="btn" onclick="closeM('m-detail')">Fermer</button>
-    <button class="btn p" id="btn-det-edit">Modifier</button>
+    <button class="btn p" id="btn-det-edit" data-perm="immobilisations.update">Modifier</button>
   </div>
 </div></div>
 
@@ -1744,7 +1775,10 @@
       </div>
       <div class="fgr"><label>Motif de sortie *</label><select id="so2" onchange="togSort()"><option value="cession">Cession</option><option value="rebut">Mise au rebut</option><option value="vol">Vol / Sinistre</option></select></div>
       <div class="fgr"><label>Date de sortie *</label><input type="date" id="so3" oninput="calcSort()"></div>
-      <div class="fgr" id="so-pg"><label>Prix de cession (FCFA)</label><input type="number" id="so4" placeholder="0" oninput="calcSort()"></div>
+      <div class="fgr" id="so-pg"><label>Prix de cession TTC (FCFA)</label><input type="number" id="so4" placeholder="0" oninput="calcSort()"></div>
+      <div class="fgr full" id="so-tva-wrap" style="display:none;margin-top:4px">
+        <label><input type="checkbox" id="so-tva-recup" style="accent-color:var(--blue)" onchange="calcSort()"> Cession soumise à la TVA (18%) (TVA récupérée à l'achat)</label>
+      </div>
       <div class="fgr"><label>Acheteur / Destinataire</label><input type="text" id="so5" placeholder="Nom..."></div>
       <div class="fgr full"><label>Observations</label><textarea id="so6" placeholder="Précisez les circonstances..."></textarea></div>
       <div class="fgr full" id="so-reinvest-wrap" style="display:none;margin-top:4px">
@@ -2006,6 +2040,23 @@
   </div>
 </div></div>
 
+
+<!-- Modal : Déconnexion -->
+<div class="mb" id="m-logout"><div class="modal" style="width:400px; text-align:center">
+  <div class="mh" style="justify-content:center; border-bottom:none; padding-bottom:0">
+    <h3 style="font-size:18px">Fermer l'application</h3>
+  </div>
+  <div class="mc" style="padding: 20px 30px">
+    <p style="margin-bottom:15px; color:var(--text2)">Voulez-vous vraiment vous déconnecter de l'application ?</p>
+    <p style="font-size:12px; color:var(--amber); background:var(--amber-light); padding:10px; border-radius:6px; margin:0 auto; max-width: 90%;">
+      N'oubliez pas de sauvegarder vos données avant de quitter.
+    </p>
+  </div>
+  <div class="mf" style="justify-content:center; gap:15px; border-top:none; padding-top:0">
+    <button class="btn" onclick="closeM('m-logout')" style="width:120px">Non</button>
+    <button class="btn d" onclick="confirmLogout()" style="width:120px; background:var(--red); color:#fff; border:none">Oui, fermer</button>
+  </div>
+</div></div>
 
 <!-- Modal : Changement de mot de passe -->
 <div class="mb" id="m-chgpwd"><div class="modal" style="width:460px">
