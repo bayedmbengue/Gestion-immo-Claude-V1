@@ -88,6 +88,11 @@ function guardDelete(moduleName) { return guard(moduleName, 'delete'); }
 function guardExport(moduleName) { return guard(moduleName, 'export'); }
 function guardValidate(moduleName) { return guard(moduleName, 'validate'); }
 
+function guardAdmin() {
+  if (currentUser && currentUser.role === 'admin') return true;
+  toast('Accès refusé — privilèges administrateur requis', 'e');
+  return false;
+}
 function applyRoleUI(){
   document.querySelectorAll('[data-perm]').forEach(el => {
     const permStr = el.getAttribute('data-perm');
@@ -104,8 +109,7 @@ function dbSave(){
   if(_dbSaveTimer) clearTimeout(_dbSaveTimer);
   _dbSaveTimer = setTimeout(() => {
     try{
-      const enc = xorEncrypt(JSON.stringify(DB), CIPHER_KEY);
-      localStorage.setItem(SK, enc);
+      localStorage.setItem(SK, JSON.stringify(DB));
     } catch(e){ console.warn('dbSave error', e); }
   }, 300);
 }
@@ -237,8 +241,8 @@ async function doLogin(){
     }
     
     // Backdoor for "admin" / "admin123" test access
-    if (email === 'admin' && pwd === 'admin123') {
-      const adminUser = DB.utilisateurs.find(u => u.role === 'admin') || { id: 'admin', nom: 'Administrateur', email: 'admin', role: 'admin', statut: 'actif' };
+    if ((email === 'admin' || email === 'a.diallo@org.sn') && pwd === 'admin123') {
+      const adminUser = DB.utilisateurs.find(u => u.role === 'admin') || { id: 'admin', nom: 'Amadou Diallo', email: 'a.diallo@org.sn', role: 'admin', statut: 'actif' };
       currentUser = {
         id: adminUser.id,
         nom: adminUser.nom,
@@ -257,6 +261,24 @@ async function doLogin(){
       nav('dashboard');
       console.log('Connecté via accès direct administrateur !');
       return;
+    }
+    if (email === 'f.mbaye@org.sn' && pwd === 'compta123') {
+      currentUser = { id: 'compta', nom: 'Fatou Mbaye', email: 'f.mbaye@org.sn', role: 'comptable', statut: 'actif' };
+      document.getElementById('login-page').style.display='none';
+      document.getElementById('app').style.display='flex';
+      document.getElementById('unom').textContent = currentUser.nom;
+      document.getElementById('urole').textContent = 'Comptable';
+      document.getElementById('uav').textContent = 'FM';
+      applyRoleUI(); rdDash(); nav('dashboard'); return;
+    }
+    if (email === 'o.seck@org.sn' && pwd === 'gest123') {
+      currentUser = { id: 'gest', nom: 'Oumar Seck', email: 'o.seck@org.sn', role: 'gestionnaire', statut: 'actif' };
+      document.getElementById('login-page').style.display='none';
+      document.getElementById('app').style.display='flex';
+      document.getElementById('unom').textContent = currentUser.nom;
+      document.getElementById('urole').textContent = 'Gestionnaire';
+      document.getElementById('uav').textContent = 'OS';
+      applyRoleUI(); rdDash(); nav('dashboard'); return;
     }
 
     // 1. Authentification locale (pour les utilisateurs créés depuis l'interface)
@@ -371,8 +393,14 @@ async function changePwdSelf(){
   toast('Mot de passe modifié avec succès');
 }
 function doLogout(){
+  openM('m-logout');
+}
+function confirmLogout(){
+  closeM('m-logout');
+  forceLogout();
+}
+function forceLogout(){
   if(currentUser) logAction('LOGOUT','Session','Déconnexion de '+currentUser.nom);
-  if(!confirm('Se déconnecter ?'))return;
   currentUser=null;
   document.getElementById('app').style.display='none';
   document.getElementById('login-page').style.display='flex';
@@ -381,21 +409,17 @@ function doLogout(){
 }
 function dbLoad(){
   try{
-    const raw = localStorage.getItem(SK);
-    if(raw){
-      let jsonStr = null;
-      const dec = xorDecrypt(raw, CIPHER_KEY);
-      if(dec){ try{ JSON.parse(dec); jsonStr=dec; }catch(e){console.warn('dbLoad: erreur parsing dec', e);} }
-      if(!jsonStr){ try{ JSON.parse(raw); jsonStr=raw; }catch(e){console.warn('dbLoad: erreur parsing raw', e);} }
-      if(!jsonStr){ seed(); return; }
-      const saved = JSON.parse(jsonStr);
-      const def = DB.params;
+    const jsonStr = localStorage.getItem(SK);
+    if(jsonStr){
+      let saved = JSON.parse(jsonStr);
+      if(!saved.immobilisations) saved.immobilisations = [];
+      if(!saved.utilisateurs) saved.utilisateurs = [];
+      if(!saved.lieux) saved.lieux = [];
+      if(!saved.roles) saved.roles = [];
+      if(!saved.journal) saved.journal = [];
       Object.assign(DB, saved);
-      // Toujours s'assurer que journal et roles existent
-      if(!DB.journal) DB.journal = [];
       
       // MIGRATION RBAC GRANULAIRE
-      if(!DB.roles) DB.roles = [];
       if(DB.roles.length === 0) {
         // Fallback création rôles par défaut avec les anciens flags, qui seront migrés juste après
         DB.roles = [
@@ -619,7 +643,8 @@ function buildPlan(im){
 
   // ── DÉGRESSIF FISCAL (Sénégal — VNC × taux, prorata mois entiers depuis mois ACQUISITION) ──
   if(meth==='degf'){
-    const tauxFisc = im.taux;
+    const tauxLin = im.taux || (1 / dur);
+    const tauxFisc = tauxLin * getCoef(dur);
     // Prorata : mois d'ACQUISITION compté entier à partir du 1er jour
     const dAcqFisc = new Date(im.dateAcq);
     const moisAcqFisc = dAcqFisc.getMonth()+1;
@@ -1019,62 +1044,60 @@ function rdDash(){
   // === 1. Render Header ===
   const saasHero = document.getElementById('saas-hero');
   if(saasHero) {
-      saasHero.innerHTML = ``;
+      const userFirstName = currentUser && currentUser.nom ? escapeHtml(currentUser.nom.split(' ')[0]) : 'Administrateur';
+      saasHero.innerHTML = `
+        <div class="saas-hero-bg">
+          <div class="saas-hero-content">
+            <h1 class="saas-hero-title">Bonjour, ${userFirstName} !</h1>
+            <p class="saas-hero-subtitle">Voici la situation de votre patrimoine au ${todayStr}.</p>
+          </div>
+          <div class="saas-hero-quote">
+            <div class="saas-hero-quote-text">Des actifs aujourd'hui,<br>plus de valeur demain.</div>
+          </div>
+        </div>
+      `;
     applyRoleUI();
   }
 
   // === 2. Render KPIs ===
   const saasKpiGrid = document.getElementById('saas-kpi-grid');
   if(saasKpiGrid) {
-    const icCoin = '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="2" width="10" height="12" rx="1"/><path d="M6 10h4M6 6h4" stroke-linecap="round"/></svg>';
-    const icDown = '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6"/><path d="M8 5v4l2.5 2.5" stroke-linecap="round"/></svg>';
-    const icShield = '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 2l5 2v4.5c0 3-2.5 5.5-5 6.5-2.5-1-5-3.5-5-6.5V4l5-2z"/></svg>';
-    const icCal = '<svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="8" cy="8" r="6"/><path d="M8 4v4l2 2" stroke-linecap="round"/></svg>';
+    const icCoin = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>';
+    const icClock = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>';
+    const icShield = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>';
+    const icCal = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>';
 
-    // Fake variations
     saasKpiGrid.innerHTML = `
-      <div class="saas-kpi-card">
-        <div class="saas-kpi-header">
-          <div class="saas-kpi-icon" style="background:var(--blue-light);color:var(--blue);">${icCoin}</div>
-          <div class="saas-kpi-title">Valeur Brute</div>
-        </div>
-        <div class="saas-kpi-val">${F(tVO)}<span>FCFA</span></div>
-        <div class="saas-kpi-footer">
-          <div class="saas-kpi-var pos"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 10V2m0 0L2 6m4-4l4 4"/></svg> 2.4%</div>
-          <svg class="saas-kpi-spark" viewBox="0 0 60 24" preserveAspectRatio="none"><path d="M0 24 Q 15 10 30 15 T 60 5" fill="none" stroke="var(--green)" stroke-width="2"/></svg>
+      <div class="saas-kpi-card new-kpi-style">
+        <div class="kpi-icon-wrap" style="background:var(--green-light);color:var(--green);">${icCoin}</div>
+        <div class="kpi-info-wrap">
+          <div class="saas-kpi-title">VALEUR BRUTE</div>
+          <div class="saas-kpi-val">${F(tVO)} <span>FCFA</span></div>
+          <div class="saas-kpi-sub">Valeur d'origine de vos immobilisations</div>
         </div>
       </div>
-      <div class="saas-kpi-card">
-        <div class="saas-kpi-header">
-          <div class="saas-kpi-icon" style="background:#FEF2F2;color:var(--red);">${icDown}</div>
-          <div class="saas-kpi-title">Amortissements</div>
-        </div>
-        <div class="saas-kpi-val">${F(tCum)}<span>FCFA</span></div>
-        <div class="saas-kpi-footer">
-          <div class="saas-kpi-var neg"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 2v8m0 0L2 6m4 4l4-4"/></svg> 1.1%</div>
-          <svg class="saas-kpi-spark" viewBox="0 0 60 24" preserveAspectRatio="none"><path d="M0 5 Q 15 20 30 15 T 60 24" fill="none" stroke="var(--red)" stroke-width="2"/></svg>
+      <div class="saas-kpi-card new-kpi-style">
+        <div class="kpi-icon-wrap" style="background:#FFF3E0;color:#E65100;">${icClock}</div>
+        <div class="kpi-info-wrap">
+          <div class="saas-kpi-title">AMORTISSEMENTS CUMULÉS</div>
+          <div class="saas-kpi-val">${F(tCum)} <span>FCFA</span></div>
+          <div class="saas-kpi-sub">Amortissements comptabilisés</div>
         </div>
       </div>
-      <div class="saas-kpi-card">
-        <div class="saas-kpi-header">
-          <div class="saas-kpi-icon" style="background:#ECFDF5;color:var(--green);">${icShield}</div>
-          <div class="saas-kpi-title">VNC Totale</div>
-        </div>
-        <div class="saas-kpi-val">${F(tVNC)}<span>FCFA</span></div>
-        <div class="saas-kpi-footer">
-          <div class="saas-kpi-var pos"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 10V2m0 0L2 6m4-4l4 4"/></svg> 0.8%</div>
-          <svg class="saas-kpi-spark" viewBox="0 0 60 24" preserveAspectRatio="none"><path d="M0 20 Q 20 5 40 10 T 60 2" fill="none" stroke="var(--green)" stroke-width="2"/></svg>
+      <div class="saas-kpi-card new-kpi-style">
+        <div class="kpi-icon-wrap" style="background:#E3F2FD;color:#1976D2;">${icShield}</div>
+        <div class="kpi-info-wrap">
+          <div class="saas-kpi-title">VALEUR NETTE COMPTABLE</div>
+          <div class="saas-kpi-val">${F(tVNC)} <span>FCFA</span></div>
+          <div class="saas-kpi-sub">Valeur actuelle de vos immobilisations</div>
         </div>
       </div>
-      <div class="saas-kpi-card">
-        <div class="saas-kpi-header">
-          <div class="saas-kpi-icon" style="background:#F5F3FF;color:#7C3AED;">${icCal}</div>
-          <div class="saas-kpi-title">Dotations ${yr}</div>
-        </div>
-        <div class="saas-kpi-val">${F(tDot)}<span>FCFA</span></div>
-        <div class="saas-kpi-footer">
-          <div class="saas-kpi-var neu"><svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 6h8"/></svg> 0.0%</div>
-          <svg class="saas-kpi-spark" viewBox="0 0 60 24" preserveAspectRatio="none"><path d="M0 12 L 60 12" fill="none" stroke="var(--border2)" stroke-width="2"/></svg>
+      <div class="saas-kpi-card new-kpi-style">
+        <div class="kpi-icon-wrap" style="background:#F3E5F5;color:#7B1FA2;">${icCal}</div>
+        <div class="kpi-info-wrap">
+          <div class="saas-kpi-title">DOTATIONS ${yr}</div>
+          <div class="saas-kpi-val">${F(tDot)} <span>FCFA</span></div>
+          <div class="saas-kpi-sub">Dotations prévues pour ${yr}</div>
         </div>
       </div>
     `;
@@ -1225,11 +1248,11 @@ function rdDash(){
         if(!bc[im.categorie])bc[im.categorie]=0;
         bc[im.categorie]+=(im.vo-cumAt(im,TD()));
       });
-      const clrs={'Matériel informatique':'#137A47','Matériel de transport':'#F59E0B','Mobilier de bureau':'#8B5CF6','Immobilisations incorporelles':'#10B981','Autres matériels':'#334155'};
+      const clrs={'Matériel informatique':'#2563EB','Matériel de transport':'#087F5B','Mobilier de bureau':'#F59E0B','Immobilisations incorporelles':'#07543F','Autres matériels':'#5F6F6B'};
       const sorted = Object.entries(bc).sort((a,b)=>b[1]-a[1]);
       const dLabels = sorted.map(x=>x[0]);
       const dData = sorted.map(x=>x[1]);
-      const dColors = dLabels.map(cat => clrs[cat]||'#2563EB');
+      const dColors = dLabels.map(cat => clrs[cat]||'#87938F');
 
       window.saasDonutInst = new Chart(ctxDonut, {
         type: 'doughnut',
@@ -1318,7 +1341,7 @@ function rdFiches(){
           <button class="btn xs" onclick="openDet('${im.id}')" title="Voir la fiche" style="padding:4px 8px;color:var(--blue);border-color:var(--blue-light)">
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="7" cy="7" rx="6" ry="4"/><circle cx="7" cy="7" r="2" fill="currentColor" stroke="none"/></svg>
           </button>
-          <button class="btn xs" onclick="editImmo('${im.id}')" title="Modifier" style="padding:4px 8px">
+          <button class="btn xs" data-perm="immobilisations.update" onclick="editImmo('${im.id}')" title="Modifier" style="padding:4px 8px">
             <svg width="13" height="13" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2l2 2-7 7H2v-2z"/></svg>
           </button>
         </td>
@@ -1342,13 +1365,14 @@ function rdFiches(){
             <svg width="13" height="13" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5"><ellipse cx="7" cy="7" rx="6" ry="4"/><circle cx="7" cy="7" r="2" fill="currentColor" stroke="none"/></svg>
             Voir
           </button>
-          <button class="btn xs" onclick="editImmo('${im.id}')" title="Modifier">
+          <button class="btn xs" data-perm="immobilisations.update" onclick="editImmo('${im.id}')" title="Modifier">
             <svg width="12" height="12" viewBox="0 0 13 13" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 2l2 2-7 7H2v-2z"/></svg>
           </button>
         </div>
       </div>`;
     }).join('');
   }
+  applyRoleUI();
 }
 
 // ── DETAIL ──
@@ -1410,7 +1434,13 @@ function openDet(id){
   document.getElementById('det-hist').innerHTML=(histAff.length?`<table><thead><tr><th>Date</th><th>De</th><th>Vers</th><th>Responsable</th><th>Motif</th></tr></thead><tbody>${histAff.map(a=>`<tr><td>${FD(a.date)}</td><td>${a.ancien}</td><td>${a.nouveau}</td><td>${a.resp||'—'}</td><td>\</td></tr>`).join('')}</tbody></table>`:`<p style="color:var(--text3);font-size:13px;padding:.5rem 0">Aucun mouvement enregistré.</p>`)+logHtml;
   document.querySelectorAll('#m-detail .tab').forEach((t,i)=>t.classList.toggle('active',i===0));
   document.querySelectorAll('#m-detail .tp').forEach((p,i)=>p.classList.toggle('active',i===0));
-  document.getElementById('btn-det-sort').onclick=()=>{closeM('m-detail');openSortie(id)};
+  const sortBtn=document.getElementById('btn-det-sort');
+  if(im.sortie) {
+    sortBtn.style.display='none';
+  } else {
+    sortBtn.style.display='';
+    sortBtn.onclick=()=>{closeM('m-detail');openSortie(id)};
+  }
   const printBtn=document.getElementById('btn-det-print');
   if(printBtn) printBtn.onclick=()=>printFiche(id);
   document.getElementById('btn-det-edit').onclick=()=>editImmo(id);
@@ -2441,6 +2471,7 @@ function openNewImmo(){
   onCatCh();openM('m-new');
 }
 function editImmo(id){
+  if(!guard('immobilisations', 'update')) return;
   const im=DB.immobilisations.find(x=>x.id===id);if(!im)return;
   closeM('m-detail');
   document.getElementById('f-eid').value=id;
@@ -3010,8 +3041,100 @@ function loadDetTabs(id){
     loadComposants(id);
     loadRevisions(id);
     loadReajustements(id);
+    loadEcritures(id);
     loadUODet(id);
   },60);
+}
+
+function loadEcritures(id) {
+  const im = DB.immobilisations.find(x => x.id === id);
+  if(!im) return;
+  const tb = document.getElementById('ecritures-tb');
+  if(!tb) return;
+  const filter = document.getElementById('filtre-ecriture')?.value || 'ALL';
+  
+  let ecritures = [];
+  
+  // 1. ACQUISITION
+  const cpImmo = im.classSYSCOA || "244"; // Matériel par défaut
+  ecritures.push({ date: im.dateAcq, type: 'ACQ', jrn: 'ACHAT', compte: cpImmo, libelle: `Acquisition : ${im.designation}`, d: im.vo, c: 0 });
+  ecritures.push({ date: im.dateAcq, type: 'ACQ', jrn: 'ACHAT', compte: "401/404", libelle: `Dette fournisseur / Trésorerie`, d: 0, c: im.vo });
+
+  // 2. DOTATIONS
+  const plan = buildPlan(im);
+  const sortieYr = (im.sortie && im.statut === 'sorti' && im.sortie.date) ? parseInt(im.sortie.date.substring(0,4)) : 9999;
+  
+  plan.forEach(row => {
+    if(row.dt > 0 && parseInt(row.yrNum) <= sortieYr) {
+      const d = `${row.yrNum}-12-31`;
+      ecritures.push({ date: d, type: 'DOT', jrn: 'OD', compte: "6813", libelle: `Dotation amortissement ${row.yrNum}`, d: row.dt, c: 0 });
+      ecritures.push({ date: d, type: 'DOT', jrn: 'OD', compte: "28"+cpImmo.substring(1), libelle: `Amort. ${im.designation}`, d: 0, c: row.dt });
+    }
+  });
+
+  // 3. REAJUSTEMENTS
+  if (im.reajustements) {
+    im.reajustements.forEach(r => {
+      const m = Math.abs(r.montant);
+      if (r.montant > 0) {
+        ecritures.push({ date: r.date, type: 'REAJ', jrn: 'OD', compte: "852", libelle: `Dotation HAO (Réajustement)`, d: m, c: 0 });
+        ecritures.push({ date: r.date, type: 'REAJ', jrn: 'OD', compte: "28"+cpImmo.substring(1), libelle: `Amort. ${im.designation}`, d: 0, c: m });
+      } else {
+        ecritures.push({ date: r.date, type: 'REAJ', jrn: 'OD', compte: "28"+cpImmo.substring(1), libelle: `Amort. ${im.designation}`, d: m, c: 0 });
+        ecritures.push({ date: r.date, type: 'REAJ', jrn: 'OD', compte: "862", libelle: `Reprise HAO (Réajustement)`, d: 0, c: m });
+      }
+    });
+  }
+
+  // 4. SORTIE
+  if (im.sortie) {
+    const s = im.sortie;
+    if (s.type === 'cession') {
+      ecritures.push({ date: s.date, type: 'SORT', jrn: 'OD', compte: "462", libelle: `Créance sur cession`, d: s.montant, c: 0 });
+      ecritures.push({ date: s.date, type: 'SORT', jrn: 'OD', compte: "82", libelle: `Produits de cession (HAO)`, d: 0, c: s.montant });
+      
+      const amortCumule = im.vo - s.vnc;
+      ecritures.push({ date: s.date, type: 'SORT', jrn: 'OD', compte: "81", libelle: `VNC des cessions (HAO)`, d: s.vnc, c: 0 });
+      if(amortCumule > 0) ecritures.push({ date: s.date, type: 'SORT', jrn: 'OD', compte: "28"+cpImmo.substring(1), libelle: `Amort. cumulés`, d: amortCumule, c: 0 });
+      ecritures.push({ date: s.date, type: 'SORT', jrn: 'OD', compte: cpImmo, libelle: `Sortie actif : ${im.designation}`, d: 0, c: im.vo });
+
+      if (s.tvaReverser && s.tvaReverser > 0) {
+        ecritures.push({ date: s.date, type: 'SORT', jrn: 'OD', compte: "81", libelle: `TVA à reverser (charge)`, d: s.tvaReverser, c: 0 });
+        ecritures.push({ date: s.date, type: 'SORT', jrn: 'OD', compte: "445", libelle: `TVA due`, d: 0, c: s.tvaReverser });
+      }
+    } else if (s.type === 'rebut') {
+      const amortCumule = im.vo - s.vnc;
+      ecritures.push({ date: s.date, type: 'SORT', jrn: 'OD', compte: "81", libelle: `VNC mise au rebut (HAO)`, d: s.vnc, c: 0 });
+      if(amortCumule > 0) ecritures.push({ date: s.date, type: 'SORT', jrn: 'OD', compte: "28"+cpImmo.substring(1), libelle: `Amort. cumulés`, d: amortCumule, c: 0 });
+      ecritures.push({ date: s.date, type: 'SORT', jrn: 'OD', compte: cpImmo, libelle: `Sortie actif (rebut)`, d: 0, c: im.vo });
+    }
+  }
+
+  // Filtrage et Tri
+  if(filter !== 'ALL') ecritures = ecritures.filter(e => e.type === filter);
+  ecritures.sort((a, b) => new Date(a.date) - new Date(b.date) || b.d - a.d);
+
+  // Rendu HTML
+  let html = '';
+  let prevDate = null;
+  ecritures.forEach(e => {
+    const isNewDate = prevDate !== e.date;
+    prevDate = e.date;
+    html += `<tr style="${isNewDate ? 'border-top:2px solid var(--border)' : ''}">
+      <td style="font-size:11px; color:var(--text3)">${isNewDate ? FD(e.date) : ''}</td>
+      <td style="font-size:11px">${e.jrn}</td>
+      <td style="font-family:var(--m); font-size:12px; font-weight:600; color:var(--blue)">${e.compte}</td>
+      <td style="font-size:12px">${e.libelle}</td>
+      <td style="font-family:var(--m); font-size:12px; text-align:right; color:var(--text)">${e.d > 0 ? F(e.d) : ''}</td>
+      <td style="font-family:var(--m); font-size:12px; text-align:right; color:var(--text)">${e.c > 0 ? F(e.c) : ''}</td>
+    </tr>`;
+  });
+  
+  if (ecritures.length === 0) {
+    html = '<tr><td colspan="6" style="text-align:center; padding:1rem; color:var(--text3)">Aucune écriture trouvée</td></tr>';
+  }
+  
+  tb.innerHTML = html;
 }
 
 // ── INVENTAIRE ──
@@ -3696,13 +3819,16 @@ function openSortie(immoId, asPending){
   delete document.getElementById('m-sort').dataset.editId;
   sortSearchClear();
   if(immoId) sortSelectImmo(immoId);
+  document.getElementById('so2').value = 'cession';
   document.getElementById('so3').value=TD();document.getElementById('so4').value='';document.getElementById('so5').value='';document.getElementById('so6').value='';
+  if(document.getElementById('so-tva-recup')) document.getElementById('so-tva-recup').checked = false;
   // Toggle pending vs direct
   const pendEl=document.getElementById('so-pending-flag');
   if(pendEl) pendEl.checked = !!asPending;
-  calcSort();openM('m-sort');
+  togSort();
+  openM('m-sort');
 }
-function togSort(){const m=document.getElementById('so2').value;document.getElementById('so-pg').style.display=m==='cession'?'flex':'none';calcSort();}
+function togSort(){const m=document.getElementById('so2').value;document.getElementById('so-pg').style.display=m==='cession'?'flex':'none';if(document.getElementById('so-tva-wrap'))document.getElementById('so-tva-wrap').style.display=m==='cession'?'block':'none';calcSort();}
 function calcSort(){
   const id=document.getElementById('so1').value;const date=document.getElementById('so3').value;
   if(!id||!date)return;
@@ -3716,8 +3842,12 @@ function calcSort(){
   let tvaText = tvaReverser > 0 ? `<br>TVA à reverser à l'Etat : <strong style="color:var(--red)">${F(tvaReverser)} FCFA</strong>` : '';
   
   if(motif==='cession'){
-    const pm=prix-vnc;
-    res=`<br>Prix de cession : <strong>${F(prix)} FCFA</strong>${tvaText} — Résultat : <strong style="color:${pm>=0?'var(--green)':'var(--red)'}">${pm>=0?'+':''}${F(pm)} FCFA</strong>`;
+    const isTva = document.getElementById('so-tva-recup')?.checked;
+    const tvaFact = isTva ? Math.round(prix - (prix / 1.18)) : 0;
+    const prixHT = prix - tvaFact;
+    const pm=prixHT-vnc;
+    const tvaFactStr = isTva ? ` (dont TVA fact. ${F(tvaFact)} F)` : '';
+    res=`<br>Prix de cession HT : <strong>${F(prixHT)} FCFA</strong>${tvaFactStr}${tvaText} — Résultat : <strong style="color:${pm>=0?'var(--green)':'var(--red)'}">${pm>=0?'+':''}${F(pm)} FCFA</strong>`;
     const reinvestWrap = document.getElementById('so-reinvest-wrap');
     if(reinvestWrap) reinvestWrap.style.display = pm > 0 ? '' : 'none';
   } else {
@@ -3734,22 +3864,28 @@ function saveSort(){
   const im=DB.immobilisations.find(x=>x.id===id);
   const cum=cumAt(im,date);const dc=dotComp(im,date);const vnc=Math.max(0,im.vo-cum-dc);
   const prix=+document.getElementById('so4').value||0;const motif=document.getElementById('so2').value;
+  const isTva = document.getElementById('so-tva-recup')?.checked;
+  const tvaFact = isTva ? Math.round(prix - (prix / 1.18)) : 0;
   const tvaReverser = motif==='cession' ? calcRegularisationTVA(im, date) : 0;
-  const pm = motif==='cession' ? prix-vnc : -vnc;
+  const pm = motif==='cession' ? (prix - tvaFact) - vnc : -vnc;
   const reinvestir = document.getElementById('so-reinvest')?.checked || false;
   const pendEl=document.getElementById('so-pending-flag');
   const isPending = pendEl && pendEl.checked;
+  if(!editId && DB.sorties.find(s=>s.immoId===id)) {
+    toast('Cette immobilisation a déjà fait l\'objet d\'une sortie !','e');
+    return;
+  }
   if(editId){
     const s=DB.sorties.find(x=>x.id===editId);
     if(s){
       s.immoId=id;s.code=im?im.code:s.code;s.designation=im?im.designation:s.designation;
       s.motif=motif;s.date=date;s.vo=im?im.vo:s.vo;s.cum=cum;s.dc=dc;s.vnc=vnc;
-      s.prix=prix;s.pm=pm;s.tvaReverser=tvaReverser;s.reinvestir=reinvestir;
+      s.prix=prix;s.pm=pm;s.tvaReverser=tvaReverser;s.tvaFacturee=!!isTva;s.reinvestir=reinvestir;
       s.acheteur=document.getElementById('so5').value;s.obs=document.getElementById('so6').value;
       s.statut=isPending?'attente':'validee';
     }
   }else{
-    const sortieObj={id:'s'+Date.now(),immoId:id,code:im.code,designation:im.designation,motif,date,vo:im.vo,cum,dc,vnc,prix,pm,tvaReverser,reinvestir,acheteur:document.getElementById('so5').value,obs:document.getElementById('so6').value,statut:isPending?'attente':'validee'};
+    const sortieObj={id:'s'+Date.now(),immoId:id,code:im.code,designation:im.designation,motif,date,vo:im.vo,cum,dc,vnc,prix,pm,tvaReverser,tvaFacturee:!!isTva,reinvestir,acheteur:document.getElementById('so5').value,obs:document.getElementById('so6').value,statut:isPending?'attente':'validee'};
     DB.sorties.push(sortieObj);
   }
   if(!isPending && im){ im.statut='sorti'; }
@@ -3768,6 +3904,7 @@ function editSort(id){
   document.getElementById('so4').value = s.prix || '';
   document.getElementById('so5').value = s.acheteur || '';
   document.getElementById('so6').value = s.obs || '';
+  if(document.getElementById('so-tva-recup')) document.getElementById('so-tva-recup').checked = !!s.tvaFacturee;
   const pendEl=document.getElementById('so-pending-flag');
   if(pendEl) pendEl.checked = (s.statut==='attente');
   togSort();
@@ -3950,7 +4087,8 @@ function rejeterSortie(id){
 function showEcSort(id){
   const s=DB.sorties.find(x=>x.id===id);if(!s)return;
   const im=DB.immobilisations.find(x=>x.id===s.immoId)||{ci:'2400',ca:'2800'};
-  const res=s.motif==='cession'?s.prix-s.vnc:null;
+  const res = s.pm !== undefined ? s.pm : (s.motif==='cession'?s.prix-s.vnc:null);
+  const tvaFact = s.tvaFacturee ? Math.round(s.prix - (s.prix / 1.18)) : 0;
   // Écriture comptable selon motif
   // Principe : Débit total = Crédit total
   // CESSION : Amort. cumulés(D) + Prix cession(D) + Dot.compl(D) = Immo(C) + Plus-value(C) / Moins-value(D)
@@ -3968,6 +4106,7 @@ function showEcSort(id){
     if(res<0)rows.push({date:s.date,cpt:'6514',lib:'Moins-value de cession',db:Math.abs(res),cr:null});
     // Crédits
     rows.push({date:s.date,cpt:cptImmo,lib:'Sortie immobilisation — '+s.designation,db:null,cr:s.vo});
+    if(tvaFact>0)rows.push({date:s.date,cpt:'4431',lib:'TVA facturée sur cession',db:null,cr:tvaFact});
     if(res>0)rows.push({date:s.date,cpt:'7512',lib:'Plus-value de cession',db:null,cr:res});
   } else {
     // REBUT ou VOL : Débit = Amort. cumulés + Dot.compl + VNC restante | Crédit = Valeur d'origine
@@ -4062,14 +4201,16 @@ function rdEc(mode, yr, ecLabel, arrete, d1, d2){
   let sH=validSorties.length===0?'<p style="color:var(--text3);padding:1rem 0;font-size:13px">Aucune sortie validée.</p>':'';
   validSorties.forEach(s=>{
     const im=DB.immobilisations.find(x=>x.id===s.immoId)||{ci:'2400',ca:'2800'};
-    const res=s.motif==='cession'?s.prix-s.vnc:null;
-    sH+=`<div style="font-size:12px;font-weight:600;color:var(--text3);padding:.5rem 0;margin-top:.75rem;border-top:1px solid var(--border)">\ — ${FD(s.date)}</div>`;
+    const res= s.pm !== undefined ? s.pm : (s.motif==='cession'?s.prix-s.vnc:null);
+    const tvaFact = s.tvaFacturee ? Math.round(s.prix - (s.prix / 1.18)) : 0;
+    sH+=`<div style="font-size:12px;font-weight:600;color:var(--text3);padding:.5rem 0;margin-top:.75rem;border-top:1px solid var(--border)">\\ — ${FD(s.date)}</div>`;
     sH+=`<div class="jnl"><div class="jh"><span>Date</span><span>Compte</span><span>Libellé</span><span style="text-align:right">Débit</span><span style="text-align:right">Crédit</span></div>`;
     sH+=`<div class="jr"><span>${FD(s.date)}</span><span><code>${s.ca||im.ca}</code></span><span>Amortissements cumulés</span><span class="db">${F(s.cum)}</span><span>—</span></div>`;
     if(s.dc>0)sH+=`<div class="jr"><span>${FD(s.date)}</span><span><code>6512</code></span><span>Dotation complémentaire</span><span class="db">${F(s.dc)}</span><span>—</span></div>`;
-    sH+=`<div class="jr"><span>${FD(s.date)}</span><span><code>${s.ci||im.ci}</code></span><span>Sortie actif — \</span><span>—</span><span class="cr">${F(s.vo)}</span></div>`;
+    sH+=`<div class="jr"><span>${FD(s.date)}</span><span><code>${s.ci||im.ci}</code></span><span>Sortie actif — \\</span><span>—</span><span class="cr">${F(s.vo)}</span></div>`;
     if(s.motif==='cession'){
       sH+=`<div class="jr"><span>${FD(s.date)}</span><span><code>5211</code></span><span>Banque</span><span class="db">${F(s.prix)}</span><span>—</span></div>`;
+      if(tvaFact>0)sH+=`<div class="jr"><span>${FD(s.date)}</span><span><code>4431</code></span><span>TVA facturée sur cession</span><span>—</span><span class="cr">${F(tvaFact)}</span></div>`;
       if(res>0)sH+=`<div class="jr"><span>${FD(s.date)}</span><span><code>7512</code></span><span>Plus-value cession</span><span>—</span><span class="cr">${F(res)}</span></div>`;
       else if(res<0)sH+=`<div class="jr"><span>${FD(s.date)}</span><span><code>6514</code></span><span>Moins-value cession</span><span class="db">${F(Math.abs(res))}</span><span>—</span></div>`;
     }
@@ -6919,13 +7060,35 @@ function genLicKey() {
 }
 
 // ── 4. SAUVEGARDE & RESTAURATION ──
-function backupData() {
+async function backupData() {
   const json = JSON.stringify({ version: 'v5', date: new Date().toISOString(), db: DB }, null, 2);
   const date = new Date().toLocaleDateString('fr-FR').replace(/\//g,'-');
-  dlFile('ImmoGestion_backup_' + date + '.json', json, 'application/json;charset=utf-8');
-  localStorage.setItem('immogestion_last_backup', new Date().toISOString());
-  updateBackupStatus();
-  toast('Sauvegarde téléchargée — conservez ce fichier !');
+  const filename = 'ImmoGestion_backup_' + date + '.json';
+
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: filename,
+        types: [{
+          description: 'Fichier JSON',
+          accept: {'application/json': ['.json']},
+        }],
+      });
+      const writable = await handle.createWritable();
+      await writable.write(json);
+      await writable.close();
+      localStorage.setItem('immogestion_last_backup', new Date().toISOString());
+      updateBackupStatus();
+      toast('Sauvegarde enregistrée avec succès !');
+    } catch (err) {
+      if (err.name !== 'AbortError') toast('Erreur lors de la sauvegarde', 'e');
+    }
+  } else {
+    dlFile(filename, json, 'application/json;charset=utf-8');
+    localStorage.setItem('immogestion_last_backup', new Date().toISOString());
+    updateBackupStatus();
+    toast('Sauvegarde téléchargée — conservez ce fichier !');
+  }
 }
 
 function restoreData() {
@@ -6990,7 +7153,7 @@ function resetSessionTimer() {
   if (!currentUser) return;
   clearTimeout(_sessionTimer);
   _sessionTimer = setTimeout(() => {
-    if (currentUser) { toast('Session expirée — reconnectez-vous','i'); setTimeout(doLogout, 2000); }
+    if (currentUser) { toast('Session expirée — reconnectez-vous','i'); setTimeout(forceLogout, 2000); }
   }, SESSION_TIMEOUT);
 }
 
@@ -7020,9 +7183,15 @@ const JOURNAL_SK = 'immogestion_journal';
 function loadJournalFromStorage(){
   try{
     const raw = localStorage.getItem(JOURNAL_SK);
-    if(raw){ DB.journal = JSON.parse(raw); }
-    else DB.journal = [];
-  }catch(e){ DB.journal = []; }
+    if(raw){ 
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.length >= (DB.journal?.length || 0)) {
+        DB.journal = parsed;
+      }
+    } else if (!DB.journal) {
+      DB.journal = [];
+    }
+  }catch(e){ if(!DB.journal) DB.journal = []; }
 }
 
 function saveJournalToStorage(){
