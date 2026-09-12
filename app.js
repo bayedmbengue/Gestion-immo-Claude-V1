@@ -1404,12 +1404,12 @@ function openDet(id){
     ['Compte immo.',`<code>${im.ci||'—'}</code>`],['Compte amort.',`<code>${im.ca||'—'}</code>`],
   ];
   document.getElementById('det-grid').innerHTML=`
-    <div style="grid-column:1/-1;display:flex;gap:1rem;align-items:flex-start">
-      <div style="flex:1">${fields.map(([k,v])=>`<div style="padding:7px 10px;background:var(--surface2);border-radius:var(--r);margin-bottom:6px;display:grid;grid-template-columns:160px 1fr;gap:8px;align-items:center"><div style="font-size:11px;color:var(--text3)">${k}</div><div style="font-size:13px">${v}</div></div>`).join('')}</div>
-      <div style="flex-shrink:0;text-align:center">
-        <div id="det-qr" style="padding:8px;background:#fff;border-radius:8px;border:1px solid var(--border);display:inline-block"></div>
-        <div style="font-size:10px;color:var(--text3);margin-top:4px">\</div>
-        <button class="btn xs" onclick="printQR('${im.id}')" style="margin-top:6px;font-size:11px">🖨 Imprimer étiquette</button>
+    <div style="grid-column:1/-1;display:flex;gap:1.5rem;align-items:flex-start">
+      <div style="flex:1">${fields.map(([k,v])=>`<div style="padding:14px 18px;background:#f3f4f6;border-radius:8px;margin-bottom:8px;display:grid;grid-template-columns:260px 1fr;gap:16px;align-items:center"><div style="font-size:16px;color:var(--text3);font-weight:500">${k}</div><div style="font-size:18px;font-weight:500;color:var(--text)">${v}</div></div>`).join('')}</div>
+      <div style="flex-shrink:0;text-align:center;width:240px">
+        <div id="det-qr" style="padding:20px;background:#fff;border-radius:12px;border:1px solid var(--border);display:inline-block;width:100%;box-sizing:border-box"></div>
+        <div style="font-size:15px;color:var(--text3);margin-top:8px">\</div>
+        <button class="btn" onclick="printQR('${im.id}')" style="margin-top:12px;font-size:16px;width:100%;justify-content:center;background:#fff;border:1px solid var(--border2);color:var(--text);padding:12px">🖨 Imprimer étiquette</button>
       </div>
     </div>`;
   genQR(im.code+'\n'+(im.invNum||im.designation),document.getElementById('det-qr'));
