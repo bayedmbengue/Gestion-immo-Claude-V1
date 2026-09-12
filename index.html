@@ -45,6 +45,40 @@
   #m-new .fg.c3 { grid-template-columns: repeat(3, 1fr) !important; gap: 24px !important; align-items: start; }
   #m-new .fgr { display: flex; flex-direction: column; justify-content: flex-start; height: 100%; }
 
+  /* Responsive Scaling for Small Screens */
+  @media (max-width: 1200px) {
+    #m-new .fg.c3 { grid-template-columns: repeat(2, 1fr) !important; }
+    #m-new .modal, #m-detail .modal { width: 95vw !important; max-width: 95vw !important; }
+  }
+
+  @media (max-width: 900px) {
+    /* Scale down fonts slightly */
+    .page .ph h1 { font-size: 24px !important; }
+    .page .ph p { font-size: 14px !important; }
+    .page .btn { font-size: 14px !important; padding: 10px 16px !important; }
+    .page .fg input, .page .fg select, .page .fgr input, .page .fgr select, .page .sb2 input, .page .sb2 select { font-size: 14px !important; padding: 10px 12px !important; }
+    .page table th, .page table td { font-size: 14px !important; padding: 10px 12px !important; }
+    .page table td.n, .page table td input { font-size: 14px !important; }
+    .page table td select { font-size: 14px !important; }
+    .page .ch h3, .page .tb-title { font-size: 16px !important; }
+    .page .kpi-v, .page .db-val { font-size: 24px !important; }
+    .page .kpi-l, .page .db-lbl { font-size: 12px !important; }
+    
+    /* Revert sidebar sizes */
+    .nav-sec { font-size: 11px !important; padding: 1.25rem 1.5rem 0.5rem !important; }
+    .ni { font-size: 13.5px !important; padding: 8px 12px !important; }
+    .ni svg { width: 16px !important; height: 16px !important; }
+    .logo-name { font-size: 16px !important; }
+    .uc { font-size: 13px !important; }
+    
+    /* Scale down Modals */
+    #btn-f-new { font-size: 14px !important; padding: 10px 16px !important; }
+    #m-new .mh h3, #m-detail #det-title { font-size: 20px !important; }
+    #m-new .fsec, #m-detail .fsec { font-size: 14px !important; margin: 1.5rem 0 1rem !important; }
+    #m-new .fg.c3 { grid-template-columns: 1fr !important; }
+    #m-new .fg label, #m-new .fgr label { font-size: 13px !important; }
+    #m-detail .tab { font-size: 14px !important; padding: 10px 6px !important; }
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
