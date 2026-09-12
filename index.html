@@ -45,20 +45,47 @@
   #m-new .fg.c3 { grid-template-columns: repeat(3, 1fr) !important; gap: 24px !important; align-items: start; }
   #m-new .fgr { display: flex; flex-direction: column; justify-content: flex-start; height: 100%; }
 
-  /* FORCER L'AFFICHAGE BUREAU (A1) SUR TOUS LES ECRANS */
-  #main { min-width: 1200px !important; overflow-x: auto !important; }
+  /* FORCER L'ARCHITECTURE (Pas de retour à la ligne pour le dashboard) */
+  #main { overflow-x: hidden; }
   #tb { flex-wrap: nowrap !important; height: auto !important; min-height: 64px !important; padding: 0 2.5rem !important; }
   .tb-right { flex-wrap: nowrap !important; justify-content: flex-end !important; margin-left: auto !important; width: auto !important; margin-top: 0 !important; }
   
-  /* Forcer la grille du Dashboard (Pas de retour à la ligne) */
   .saas-kpi-grid { grid-template-columns: repeat(4, 1fr) !important; }
   .saas-main-grid { grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) !important; }
   .saas-overview-grid { grid-template-columns: repeat(2, 1fr) !important; }
   .saas-new-grid { grid-template-columns: repeat(2, 1fr) !important; }
   
-  /* Forcer la barre latérale */
   #sb { position: relative !important; transform: none !important; }
   #btn-menu { display: none !important; }
+
+  /* Mise à l'échelle proportionnelle pour que tout rentre sur petits écrans */
+  @media (max-width: 1300px) {
+    .page .kpi-v, .page .db-val, .saas-kpi-val { font-size: 20px !important; }
+    .page .kpi-l, .page .db-lbl, .saas-kpi-title { font-size: 11px !important; }
+    .saas-kpi-icon { width: 36px !important; height: 36px !important; }
+    .saas-kpi-card { padding: 1rem !important; }
+    .saas-kpi-grid { gap: 0.75rem !important; }
+    
+    .saas-hero-wrap { padding: 1.5rem !important; gap: 1rem !important; }
+    .saas-hero-title { font-size: 24px !important; }
+    
+    #tb { padding: 0 1.25rem !important; }
+    .tb-title { font-size: 16px !important; }
+    #main { padding: 1.25rem !important; }
+    .page .btn { padding: 8px 12px !important; font-size: 13px !important; }
+    
+    .saas-main-grid { gap: 1rem !important; }
+    .saas-card-header h3 { font-size: 15px !important; }
+  }
+
+  @media (max-width: 1024px) {
+    .page .kpi-v, .page .db-val, .saas-kpi-val { font-size: 16px !important; }
+    .page .kpi-l, .page .db-lbl, .saas-kpi-title { font-size: 10px !important; }
+    .saas-kpi-card { padding: 0.75rem !important; }
+    .saas-kpi-icon { width: 28px !important; height: 28px !important; }
+    .saas-hero-title { font-size: 20px !important; }
+    #tb { gap: 8px !important; }
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
